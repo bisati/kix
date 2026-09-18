@@ -55,24 +55,66 @@ export function Avatar({ name, className = "h-8 w-8 text-[11px]" }: { name: stri
   );
 }
 
+/*
+ * Every layer keeps its own aspect ratio (fixed height, w-auto, cropped by
+ * the card) — nothing stretches at any viewport width. The stripes tile,
+ * the goal mouth anchors left, the center circle sits behind the ball, and
+ * a tactics doodle fills the desktop middle.
+ */
 function Hero() {
   return (
-    <div className="relative h-24 overflow-hidden rounded-2xl bg-gradient-to-r from-pitch-deep via-pitch to-[#22a04f] shadow-sm sm:h-28">
+    <div className="relative h-24 overflow-hidden rounded-2xl bg-gradient-to-r from-pitch-deep via-pitch to-[#22a04f] shadow-sm sm:h-28 lg:h-32">
+      {/* mowing stripes */}
+      <div
+        className="absolute inset-0 opacity-[0.07]"
+        style={{
+          background:
+            "repeating-linear-gradient(90deg, #fff 0 52px, transparent 52px 104px)",
+        }}
+      />
+      {/* left: goal mouth, zoomed past the card edges */}
       <svg
-        viewBox="0 0 400 100"
-        preserveAspectRatio="none"
-        className="absolute inset-0 h-full w-full opacity-25"
+        viewBox="0 0 150 160"
+        className="absolute -left-1 top-1/2 h-[135%] w-auto -translate-y-1/2 opacity-25"
         fill="none"
         stroke="#fff"
-        strokeWidth="1.5"
+        strokeWidth="2.5"
       >
-        <rect x="8" y="8" width="384" height="84" rx="4" />
-        <line x1="200" y1="8" x2="200" y2="92" />
-        <circle cx="200" cy="50" r="22" />
-        <rect x="8" y="28" width="42" height="44" />
-        <rect x="350" y="28" width="42" height="44" />
+        <line x1="4" y1="0" x2="4" y2="160" />
+        <rect x="4" y="20" width="88" height="120" />
+        <rect x="4" y="50" width="36" height="60" />
+        <circle cx="70" cy="80" r="3" fill="#fff" stroke="none" />
+        <path d="M92 52a38 38 0 0 1 0 56" />
       </svg>
-      <div className="relative flex h-full items-center justify-between px-5">
+      {/* right: halfway line + center circle, the ball sits on the spot */}
+      <svg
+        viewBox="0 0 160 160"
+        className="absolute -right-10 top-1/2 h-[135%] w-auto -translate-y-1/2 opacity-20"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.5"
+      >
+        <line x1="80" y1="0" x2="80" y2="160" />
+        <circle cx="80" cy="80" r="52" />
+      </svg>
+      {/* desktop middle: chalkboard doodle — X makes the run over to O */}
+      <svg
+        viewBox="0 0 220 100"
+        className="absolute right-32 top-1/2 hidden h-full w-auto -translate-y-1/2 opacity-30 md:block"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2"
+      >
+        <path
+          d="M42 58C78 16 148 14 182 48"
+          strokeDasharray="1 8"
+          strokeLinecap="round"
+        />
+        <path d="M182 48l-11-3m11 3-2-11" strokeLinecap="round" />
+        <path d="M28 62l14 14m0-14-14 14" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="196" cy="68" r="9" strokeWidth="3" />
+      </svg>
+      <div className="relative flex h-full items-center justify-between px-5 sm:px-6">
         <div>
           <h2 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">
             Match day
@@ -82,7 +124,7 @@ function Hero() {
           </p>
         </div>
         <span className="rotate-12 drop-shadow-md">
-          <Ball className="h-12 w-12 sm:h-14 sm:w-14" />
+          <Ball className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16" />
         </span>
       </div>
     </div>
@@ -394,7 +436,7 @@ function InstructionsSection({
               cls =
                 ins.mode === "apart"
                   ? "bg-rose-50 text-rose-700 ring-rose-200"
-                  : "bg-teamb-soft text-teamb-deep ring-indigo-200";
+                  : "bg-indigo-50 text-indigo-700 ring-indigo-200";
               text = `⇄ ${nameOf(ins.a)} ${ins.mode === "apart" ? "vs" : "+"} ${nameOf(ins.b)}`;
             } else if (ins.kind === "injury") {
               cls = "bg-amber-50 text-amber-800 ring-amber-200";
