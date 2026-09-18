@@ -43,6 +43,27 @@ const TEAM_META = {
   },
 } as const;
 
+/**
+ * Chunky five-point star. The rounded stroke is painted in the same color as
+ * the fill, which fattens the arms and softens every join — that's what gives
+ * it the solid look the ★ text glyph can't (it also renders identically on
+ * every platform, unlike the glyph).
+ */
+function Star({ className = "h-3 w-3" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        d="M12 3.4 14.35 8.76 20.18 9.34 15.8 13.24 17.06 18.96 12 16 6.94 18.96 8.2 13.24 3.82 9.34 9.65 8.76Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 /* ---------------- List view ---------------- */
 
 function TeamCard({
@@ -80,8 +101,9 @@ function TeamCard({
               {meta.kit}
             </span>
           </h3>
-          <span className="text-xs font-semibold text-stone-500">
-            ★{team.skillTotal} · avg {team.skillAvg.toFixed(1)} · ⚡
+          <span className="flex items-center gap-1 text-xs font-semibold text-stone-500">
+            <Star className="h-3.5 w-3.5 text-pitch" />
+            {team.skillTotal} · avg {team.skillAvg.toFixed(1)} · ⚡
             {team.runningTotal}
           </span>
         </div>
@@ -131,17 +153,19 @@ function TeamCard({
                       🎮
                     </span>
                   )}
+                  {/* Skill is the headline rating, so it leads; running trails. */}
                   <span
-                    className="w-9 rounded-md bg-sky-50 py-0.5 text-center text-xs font-semibold text-sky-700"
+                    className="inline-flex w-9 shrink-0 items-center justify-center gap-0.5 rounded-md bg-pitch-soft py-0.5 text-xs font-bold text-pitch-deep"
+                    title={`skill ${r.player.skill}/5`}
+                  >
+                    <Star className="h-3 w-3" />
+                    {r.player.skill}
+                  </span>
+                  <span
+                    className="inline-flex w-9 shrink-0 items-center justify-center rounded-md bg-sky-50 py-0.5 text-xs font-semibold text-sky-700"
                     title={`running ${r.player.running}/5`}
                   >
                     ⚡{r.player.running}
-                  </span>
-                  <span
-                    className="w-9 rounded-md bg-stone-50 py-0.5 text-center text-xs font-bold text-stone-600"
-                    title={`skill ${r.player.skill}/5`}
-                  >
-                    ★{r.player.skill}
                   </span>
                 </button>
               </li>
