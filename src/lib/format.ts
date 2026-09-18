@@ -1,6 +1,10 @@
 import { SplitResult } from "./types";
 
-/** Plain-text team sheet in the shape the group already shares on WhatsApp. */
+/**
+ * Plain-text team sheet for WhatsApp. Deliberately rating-free: no skill
+ * numbers and no primary/secondary markers — the group sees names and
+ * positions, the ratings machinery stays inside the app.
+ */
 export function toShareText(result: SplitResult, date = new Date()): string {
   const d = date.toLocaleDateString("en-IN", {
     day: "numeric",
@@ -9,23 +13,17 @@ export function toShareText(result: SplitResult, date = new Date()): string {
   });
   const lines: string[] = [`⚽ Kix teams — ${d}`, ""];
   for (const team of [result.teams.A, result.teams.B]) {
-    lines.push(
-      `*Team ${team.team}* — skill ${team.skillTotal} (avg ${team.skillAvg.toFixed(1)})`
-    );
+    lines.push(`*Team ${team.team}*`);
     for (const row of team.rows) {
-      const pos = row.isSecondary ? `${row.position}*` : row.position;
-      lines.push(`${pos} — ${row.player.name}`);
+      lines.push(`${row.player.name} — ${row.position}`);
     }
     lines.push("");
   }
-  const a = result.teams.A;
-  const b = result.teams.B;
-  lines.push(
-    `Balance: skill ${a.skillTotal}v${b.skillTotal} · running ${a.runningTotal}v${b.runningTotal} · controllers ${a.controllers}v${b.controllers}`
-  );
-  if (result.flags.length) {
-    lines.push(`Notes: ${result.flags.join(" | ")}`);
+  // Keep only group-relevant notes (keeper rotation, odd headcount) — drop
+  // anything that reveals primary/secondary placements.
+  const notes = result.flags.filter((f) => !f.includes("primary:"));
+  if (notes.length) {
+    lines.push(`Notes: ${notes.join(" | ")}`);
   }
-  lines.push("", "_* = playing secondary position_");
-  return lines.join("\n");
+  return lines.join("\n").trimEnd() + "\n";
 }
