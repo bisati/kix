@@ -64,6 +64,22 @@ function Star({ className = "h-3 w-3" }: { className?: string }) {
   );
 }
 
+/** Lightning bolt, drawn with the same rounded-stroke trick as the star. */
+function Bolt({ className = "h-3 w-3" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path
+        d="M14.2 2.4 5.2 13.6 10.4 13.6 9.4 21.6 18.6 10.2 13.2 10.2Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 /* ---------------- List view ---------------- */
 
 function TeamCard({
@@ -103,7 +119,8 @@ function TeamCard({
           </h3>
           <span className="flex items-center gap-1 text-xs font-semibold text-stone-500">
             <Star className="h-3.5 w-3.5 text-pitch" />
-            {team.skillTotal} · avg {team.skillAvg.toFixed(1)} · ⚡
+            {team.skillTotal} · avg {team.skillAvg.toFixed(1)} ·
+            <Bolt className="h-3.5 w-3.5 text-sky-600" />
             {team.runningTotal}
           </span>
         </div>
@@ -162,10 +179,11 @@ function TeamCard({
                     {r.player.skill}
                   </span>
                   <span
-                    className="inline-flex w-9 shrink-0 items-center justify-center rounded-md bg-sky-50 py-0.5 text-xs font-semibold text-sky-700"
+                    className="inline-flex w-9 shrink-0 items-center justify-center gap-0.5 rounded-md bg-sky-50 py-0.5 text-xs font-semibold text-sky-700"
                     title={`running ${r.player.running}/5`}
                   >
-                    ⚡{r.player.running}
+                    <Bolt className="h-3 w-3" />
+                    {r.player.running}
                   </span>
                 </button>
               </li>
