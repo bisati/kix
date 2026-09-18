@@ -7,7 +7,7 @@ import {
   POSITIONS,
   TeamView,
 } from "../types";
-import { computeStats } from "./cost";
+import { computeStats, poolFeasibility } from "./cost";
 
 const POSITION_ORDER: Record<Position, number> = {
   GK: 0,
@@ -101,13 +101,21 @@ export function buildChecks(
       .join(" · "),
   });
 
-  // 3. Skill totals within 2.
+  // 3. Skill totals within 2 — or at this pool's tier-forced minimum.
+  const feas = poolFeasibility(players);
   const gap = Math.abs(s.A.skillTotal - s.B.skillTotal);
+  const atFloor = gap === feas.minGap;
   checks.push({
     id: "totals",
-    label: "Skill totals within 2",
-    pass: gap <= 2,
-    detail: `${s.A.skillTotal} v ${s.B.skillTotal} (gap ${gap})`,
+    label: "Skill totals as close as this pool allows",
+    pass: gap <= 2 || atFloor,
+    detail:
+      `${s.A.skillTotal} v ${s.B.skillTotal} (gap ${gap}` +
+      (gap > 2 && atFloor
+        ? " — minimum possible for these tiers)"
+        : gap > 2
+        ? `; minimum possible is ${feas.minGap})`
+        : ")"),
   });
 
   // 4. Tier spread ≤ 1 per tier.
@@ -149,16 +157,27 @@ export function buildChecks(
     detail: `mid controllers ${s.A.midControllers}v${s.B.midControllers} · mid skill ${s.A.midSkill}v${s.B.midSkill}`,
   });
 
-  // 7. Odd headcount sits with the weaker team.
+  // 7. Odd headcount: the bigger team must not be stronger per player.
+  // Raw totals can't be compared across unequal sizes — the extra body
+  // inflates the bigger team's total by construction.
   if (s.A.count !== s.B.count) {
     const larger = s.A.count > s.B.count ? "A" : "B";
     const largerStats = larger === "A" ? s.A : s.B;
     const smallerStats = larger === "A" ? s.B : s.A;
+    const perManOk =
+      largerStats.skillTotal * smallerStats.count <=
+      smallerStats.skillTotal * largerStats.count;
+    const unavoidable = !perManOk && !feas.perManAchievable;
+    const avg = (t: typeof largerStats) => (t.skillTotal / t.count).toFixed(2);
     checks.push({
       id: "odd-count",
-      label: "Extra player is on the lower-skill team",
-      pass: largerStats.skillTotal <= smallerStats.skillTotal,
-      detail: `Team ${larger} has ${largerStats.count} players (${largerStats.skillTotal} skill) vs ${smallerStats.count} (${smallerStats.skillTotal})`,
+      label: "Bigger team isn't stronger per player",
+      pass: perManOk || unavoidable,
+      detail:
+        `Team ${larger} has ${largerStats.count} players at ${avg(largerStats)} avg vs ${smallerStats.count} at ${avg(smallerStats)}` +
+        (unavoidable
+          ? " — unavoidable: this pool's tiers force the extra onto the stronger side"
+          : ""),
     });
   }
 

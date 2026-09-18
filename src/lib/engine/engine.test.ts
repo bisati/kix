@@ -139,6 +139,41 @@ describe("skill balance (rung 4)", () => {
   });
 });
 
+describe("odd headcount — per-man fairness (regression: odd games always amber)", () => {
+  it("passes odd-count when the bigger side is not stronger per player", () => {
+    // Tiers 4s:2, 3s:6, 2s:1 — the old raw-total rule is unsatisfiable here
+    // (bigger side's total is higher by construction), but per-man fairness is.
+    const players = pick([
+      "Dev", "Rohan", "Harsh", "Ritvik", "Kabir", "Sameer", "Manav", "Nikhil", "Zaid",
+    ]);
+    const result = buildTeams(players, NO_CONSTRAINTS, 7);
+    const s = statsOf(result, players);
+    const [big, small] =
+      s.A.count > s.B.count ? [s.A, s.B] : [s.B, s.A];
+    expect(big.skillTotal * small.count).toBeLessThanOrEqual(
+      small.skillTotal * big.count
+    );
+    expect(result.checks.find((c) => c.id === "odd-count")?.pass).toBe(true);
+    expect(result.checks.find((c) => c.id === "totals")?.pass).toBe(true);
+  });
+
+  it("marks a tier-forced total gap as best-possible, not as a failure", () => {
+    // Tiers 5:1, 4:2, 3:2 — the lone 5 forces a gap of 5; no split does better.
+    const players = pick(["Vikram", "Dev", "Rohan", "Harsh", "Ritvik"]);
+    const result = buildTeams(players, NO_CONSTRAINTS, 3);
+    const s = statsOf(result, players);
+    expect(Math.abs(s.A.skillTotal - s.B.skillTotal)).toBe(5);
+    const totals = result.checks.find((c) => c.id === "totals");
+    expect(totals?.pass).toBe(true);
+    expect(totals?.detail).toContain("minimum possible");
+    // Per-man rule is unavoidably violated here (the extra IS the 5) — the
+    // check must say so rather than blame the engine.
+    const odd = result.checks.find((c) => c.id === "odd-count");
+    expect(odd?.pass).toBe(true);
+    expect(odd?.detail).toContain("unavoidable");
+  });
+});
+
 describe("re-roll", () => {
   it("produces a different team composition than the previous split", () => {
     const first = buildTeams(DEMO_ROSTER, NO_CONSTRAINTS, 1);

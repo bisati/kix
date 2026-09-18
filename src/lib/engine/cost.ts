@@ -78,6 +78,65 @@ function poolFor(pos: Position, players: Player[]): number {
   return players.filter((p) => p.primary === pos || p.secondary === pos).length;
 }
 
+export interface PoolFeasibility {
+  /** Smallest total-skill gap any tier-legal split of this pool can achieve. */
+  minGap: number;
+  /**
+   * Odd pools: can any tier-legal split make the bigger team no stronger
+   * per player than the smaller one? (Even pools: trivially true.)
+   */
+  perManAchievable: boolean;
+}
+
+/**
+ * What the pool's tier structure allows, independent of any split. Under
+ * tier-legality (gap ≤ 1 per tier), per-team totals are fully determined by
+ * which side each odd tier's extra player lands on — so enumerating those
+ * ≤ 2^5 assignments gives exact bounds. Checks use this to grade the engine
+ * against what is achievable, never against impossible arithmetic.
+ */
+export function poolFeasibility(players: Player[]): PoolFeasibility {
+  let base = 0; // per-side total from evenly split tiers
+  let K = 0; // per-side player count from evenly split tiers
+  const extras: number[] = []; // one entry (the skill value) per odd tier
+  for (const tier of [5, 4, 3, 2, 1]) {
+    const c = players.filter((p) => p.skill === tier).length;
+    const k = Math.floor(c / 2);
+    K += k;
+    base += k * tier;
+    if (c % 2 === 1) extras.push(tier);
+  }
+  const m = extras.length;
+  if (m === 0) return { minGap: 0, perManAchievable: true };
+
+  const extrasSum = extras.reduce((s, e) => s + e, 0);
+  let minGap = Infinity;
+  let perManAchievable = false;
+  for (let mask = 0; mask < 1 << m; mask++) {
+    let s1 = 0;
+    let c1 = 0;
+    for (let i = 0; i < m; i++) {
+      if (mask & (1 << i)) {
+        s1 += extras[i];
+        c1++;
+      }
+    }
+    const c2 = m - c1;
+    if (Math.abs(c1 - c2) > 1) continue; // headcount must stay within 1
+    const t1 = base + s1;
+    const t2 = base + (extrasSum - s1);
+    minGap = Math.min(minGap, Math.abs(t1 - t2));
+    if (c1 === c2) {
+      perManAchievable = true; // even headcount: per-man rule not in play
+    } else {
+      const [bt, bn, st, sn] =
+        c1 > c2 ? [t1, K + c1, t2, K + c2] : [t2, K + c2, t1, K + c1];
+      if (bt * sn <= st * bn) perManAchievable = true;
+    }
+  }
+  return { minGap, perManAchievable };
+}
+
 /**
  * Lexicographic cost vector, lower is better. Order mirrors the priority
  * ladder: constraints > position balance & shape > secondary spread >
@@ -145,12 +204,15 @@ export function costVector(
   const totalGap = Math.abs(s.A.skillTotal - s.B.skillTotal);
   const totalExcess = Math.max(0, totalGap - 2);
 
-  // Odd headcount: the extra player must sit on the team with the LOWER total.
+  // Odd headcount: the bigger team must not be stronger PER PLAYER — the
+  // extra body compensates the weaker side (raw totals can't be compared
+  // across unequal team sizes; the extra body inflates them by construction).
   let oddPlacement = 0;
   if (s.A.count !== s.B.count) {
     const larger = s.A.count > s.B.count ? s.A : s.B;
     const smaller = s.A.count > s.B.count ? s.B : s.A;
-    if (larger.skillTotal > smaller.skillTotal) oddPlacement = 1;
+    if (larger.skillTotal * smaller.count > smaller.skillTotal * larger.count)
+      oddPlacement = 1;
   }
 
   const runningGap = Math.abs(s.A.runningTotal - s.B.runningTotal);
@@ -169,8 +231,8 @@ export function costVector(
     midControllerGap,
     midSkillExcess,
     totalExcess,
+    oddPlacement, // per-man fairness outranks shaving the raw gap
     totalGap,
-    oddPlacement,
     runningGap,
     lowRunnerGap,
     over40Gap,
