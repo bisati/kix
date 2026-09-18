@@ -118,44 +118,20 @@ export function buildChecks(
         : ")"),
   });
 
-  // 4. Tier spread ≤ 1 per tier. Odd pools: stacking toward the SMALLER
-  // team is deliberate compensation, never a failure; stacking toward the
-  // bigger team still is one.
-  const oddPool = s.A.count !== s.B.count;
-  const smallSide: "A" | "B" = s.A.count < s.B.count ? "A" : "B";
+  // 4. Tier spread ≤ 1 per tier — hard for EVERY headcount. The structural
+  // guardrail: the man-down team can never hoard quality wholesale.
   const tierDetail = [5, 4, 3, 2, 1]
     .filter((t) => s.A.tierCount[t] + s.B.tierCount[t] > 0)
     .map((t) => `${t}s ${s.A.tierCount[t]}v${s.B.tierCount[t]}`)
     .join(" · ");
-  const stacked = [5, 4, 3, 2, 1].filter(
+  const badTier = [5, 4, 3, 2, 1].filter(
     (t) => Math.abs(s.A.tierCount[t] - s.B.tierCount[t]) > 1
   );
-  const stackedToward = (t: number): "A" | "B" =>
-    s.A.tierCount[t] > s.B.tierCount[t] ? "A" : "B";
-  // Odd pools: compensation legitimately skews tiers (highs drift to the
-  // smaller team, lows to the bigger). The only pattern that fights
-  // compensation is a HIGH tier (4s/5s) stacked toward the bigger team —
-  // that is the amber condition; everything else is mechanics.
-  const badTier = oddPool
-    ? stacked.filter(
-        (t) =>
-          t >= 4 &&
-          stackedToward(t) !== smallSide &&
-          // ...unless an even higher tier went to the smaller team (both 5s
-          // on the small side legitimately pushes the 4s big-ward).
-          !stacked.some((u) => u > t && stackedToward(u) === smallSide)
-      )
-    : stacked;
-  const compensating = oddPool && stacked.length > 0 && badTier.length === 0;
   checks.push({
     id: "tiers",
-    label: oddPool
-      ? "Skill tiers even, or stacked toward the smaller team"
-      : "Every skill tier split evenly (gap ≤ 1)",
+    label: "Every skill tier split evenly (gap ≤ 1)",
     pass: badTier.length === 0,
-    detail:
-      tierDetail +
-      (compensating ? " — stacked toward the smaller team (compensation)" : ""),
+    detail: tierDetail,
   });
 
   // 5. Secondary placements spread ≤ 1.
@@ -166,22 +142,12 @@ export function buildChecks(
     detail: `${s.A.secondaryCount} v ${s.B.secondaryCount} secondary placements`,
   });
 
-  // 6. Controllers split ≤ 1 — odd pools: extra controllers on the SMALLER
-  // team are part of compensation; only a stack favoring the bigger team
-  // ambers.
-  const ctrlGap = Math.abs(s.A.controllers - s.B.controllers);
-  const ctrlToward: "A" | "B" = s.A.controllers > s.B.controllers ? "A" : "B";
+  // 6. Controllers split ≤ 1 — hard for every headcount.
   checks.push({
     id: "controllers",
-    label: oddPool
-      ? "Game-controllers even, or with the smaller team"
-      : "Game-controllers split evenly (gap ≤ 1)",
-    pass: ctrlGap <= 1 || (oddPool && ctrlToward === smallSide),
-    detail:
-      `${s.A.controllers} v ${s.B.controllers} controllers` +
-      (oddPool && ctrlGap > 1 && ctrlToward === smallSide
-        ? " — extra controllers on the smaller team (compensation)"
-        : ""),
+    label: "Game-controllers split evenly (gap ≤ 1)",
+    pass: Math.abs(s.A.controllers - s.B.controllers) <= 1,
+    detail: `${s.A.controllers} v ${s.B.controllers} controllers`,
   });
   checks.push({
     id: "mid-control",
@@ -199,24 +165,32 @@ export function buildChecks(
     const larger = s.A.count > s.B.count ? "A" : "B";
     const largerStats = larger === "A" ? s.A : s.B;
     const smallerStats = larger === "A" ? s.B : s.A;
-    const excess = largerStats.skillTotal - smallerStats.skillTotal;
-    const compensated = excess <= 0;
-    // The rating-only floor ignores position legality, which can block
-    // another parity step (±2) — grade the engine with that tolerance and
-    // stay honest in the detail text.
-    const withinFloor =
-      !compensated && excess <= Math.max(0, feas.minBigExcess) + 2;
+    // The bigger team may hold the higher TOTAL (tier caps force it — that
+    // paper number is correct, not a bug); what must lean man-down is
+    // quality PER HEAD.
+    const smallLeads =
+      smallerStats.skillTotal * largerStats.count >=
+      largerStats.skillTotal * smallerStats.count;
+    const unavoidable = !smallLeads && !feas.smallLeanAchievable;
+    const avg = (t: typeof largerStats) => (t.skillTotal / t.count).toFixed(2);
     checks.push({
       id: "odd-count",
-      label: "Smaller team compensated with stronger players",
-      pass: compensated || withinFloor,
+      label: "Man-down team is better per head",
+      pass: smallLeads || unavoidable,
       detail:
-        `Team ${larger}: ${largerStats.count} players, ${largerStats.skillTotal} skill vs ${smallerStats.count} players, ${smallerStats.skillTotal}` +
-        (withinFloor
-          ? " — bigger side ahead by " +
-            excess +
-            ": the closest this pool's ratings and positions allow"
+        `${smallerStats.count} players at ${avg(smallerStats)} avg vs ${largerStats.count} at ${avg(largerStats)} (totals ${smallerStats.skillTotal} v ${largerStats.skillTotal}${largerStats.skillTotal > smallerStats.skillTotal ? " — bigger side higher on paper is the tier caps working" : ""})` +
+        (unavoidable
+          ? " — unavoidable: no tier-legal split leans quality man-down here"
           : ""),
+    });
+
+    // Legs: the man-down team covers more ground per player, so passengers
+    // (running ≤ 2) hide on the bigger team where there's cover.
+    checks.push({
+      id: "legs",
+      label: "Bigger team carries the slower legs",
+      pass: largerStats.lowRunners >= smallerStats.lowRunners,
+      detail: `slow legs (run ≤ 2): ${largerStats.lowRunners} on the bigger team, ${smallerStats.lowRunners} on the man-down team · running per head ${(smallerStats.runningTotal / smallerStats.count).toFixed(1)} v ${(largerStats.runningTotal / largerStats.count).toFixed(1)}`,
     });
   }
 
@@ -268,6 +242,16 @@ export function buildFlags(
   }
   if (players.length % 2 === 1) {
     flags.push(`Odd headcount (${players.length}) — teams differ by one player.`);
+    // Escape valve: when the tier-forced gap gets ugly, offer the rotation
+    // option that turns an odd game into an even one with rolling fresh legs.
+    const s = computeStats(assignments, byId);
+    const big = s.A.count > s.B.count ? s.A : s.B;
+    const small = s.A.count > s.B.count ? s.B : s.A;
+    if (big.skillTotal - small.skillTotal >= 3) {
+      flags.push(
+        "Forced gap is large today — option: the bigger team rotates one player off every ten minutes for an even game with fresh legs."
+      );
+    }
   }
   return flags;
 }

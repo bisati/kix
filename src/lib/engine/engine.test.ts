@@ -139,56 +139,75 @@ describe("skill balance (rung 4)", () => {
   });
 });
 
-describe("odd headcount — compensation (fewer players ⇒ stronger players)", () => {
-  it("gives the smaller team enough extra skill to offset the missing body", () => {
-    // Tiers 4s:2, 3s:6, 2s:1 (total 28). With equal averages the 5-side just
-    // wins, so the 4-side must take the skill: e.g. both 4s → 14 v 14.
+describe("odd headcount — pricing the extra man (caps hard, margins lean small)", () => {
+  it("tier caps hold REGARDLESS of headcount — the small team can never hoard quality", () => {
+    // The reported bug: all 5s on one side, the other side all 4s and 3s.
+    // Structural guardrail: every tier splits within ±1 even in odd games.
+    for (const seed of [3, 7, 11]) {
+      const players = DEMO_ROSTER.slice(0, 15);
+      const result = buildTeams(players, NO_CONSTRAINTS, seed);
+      const s = statsOf(result, players);
+      for (const tier of [5, 4, 3, 2, 1]) {
+        expect(
+          Math.abs(s.A.tierCount[tier] - s.B.tierCount[tier]),
+          `seed ${seed} tier ${tier}`
+        ).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it("inside the caps, quality leans to the man-down team (better per head)", () => {
+    // Tiers 4s:2, 3s:6, 2s:1 → the lone 2 is the odd extra; it belongs to
+    // the bigger team. Result: 13 v 15 — big side higher on paper, small
+    // side better per head (3.25 v 3.00).
     const players = pick([
       "Dev", "Rohan", "Harsh", "Ritvik", "Kabir", "Sameer", "Manav", "Nikhil", "Zaid",
     ]);
     const result = buildTeams(players, NO_CONSTRAINTS, 7);
     const s = statsOf(result, players);
     const [big, small] = s.A.count > s.B.count ? [s.A, s.B] : [s.B, s.A];
-    expect(big.skillTotal).toBeLessThanOrEqual(small.skillTotal);
-    expect(small.skillTotal - big.skillTotal).toBeLessThanOrEqual(2);
+    expect(small.skillTotal * big.count).toBeGreaterThanOrEqual(
+      big.skillTotal * small.count
+    ); // small avg >= big avg
     expect(result.checks.find((c) => c.id === "odd-count")?.pass).toBe(true);
-    expect(result.checks.find((c) => c.id === "totals")?.pass).toBe(true);
-    // Tier stacking toward the smaller team is the intended compensation,
-    // never an amber.
     expect(result.checks.find((c) => c.id === "tiers")?.pass).toBe(true);
   });
 
-  it("hits the exact compensation floor when full compensation is impossible", () => {
-    // Pool {5,4,4,3,3}: the weakest 3-player side is {4,3,3}=10 vs {5,4}=9 —
-    // the big side is ahead by 1 in EVERY split. Tier-legal splits forced a
-    // gap of 5; the engine must find the floor (10v9) and the check must
-    // pass as unavoidable, not blame the engine.
+  it("paper totals may look wrong — reported honestly, never fixed by breaking tiers", () => {
+    // Pool {5,4,4,3,3}: caps force the 5 onto the 3-player side is illegal
+    // (would stack a pair), so the big side carries 12 v 7. The engine must
+    // keep tier caps, pass the check with an honest note, and offer the
+    // rotation escape valve.
     const players = pick(["Vikram", "Dev", "Rohan", "Harsh", "Ritvik"]);
     const result = buildTeams(players, NO_CONSTRAINTS, 3);
     const s = statsOf(result, players);
-    const [big, small] = s.A.count > s.B.count ? [s.A, s.B] : [s.B, s.A];
-    expect(big.skillTotal - small.skillTotal).toBe(1);
+    for (const tier of [5, 4, 3]) {
+      expect(Math.abs(s.A.tierCount[tier] - s.B.tierCount[tier])).toBeLessThanOrEqual(1);
+    }
     const odd = result.checks.find((c) => c.id === "odd-count");
     expect(odd?.pass).toBe(true);
-    expect(odd?.detail).toContain("closest");
+    expect(odd?.detail).toContain("unavoidable");
+    expect(result.flags.join(" ")).toContain("rotates one player off");
   });
 
-  it("flags honestly when compensation is impossible (identical ratings)", () => {
-    // Nine players all rated 3: the bigger side is stronger no matter what.
-    const clones: Player[] = Array.from({ length: 9 }, (_, i) => ({
-      id: `C${i}`,
-      name: `C${i}`,
-      primary: (["Defence", "Full-back", "Midfield", "Winger", "Striker"] as const)[i % 5],
-      secondary: "Midfield",
-      skill: 3,
-      running: 3,
-      control: false,
-      ageBand: "26-30",
-    }));
-    const result = buildTeams(clones, NO_CONSTRAINTS, 5);
-    const odd = result.checks.find((c) => c.id === "odd-count");
-    expect(odd?.pass).toBe(true);
-    expect(odd?.detail).toContain("closest");
+  it("legs are a currency: passengers hide on the bigger team", () => {
+    // Four equal 3s — two runners (5), two passengers (1) — plus a 2.
+    // The man-down side should get runners; the extra-body side absorbs
+    // the slow legs.
+    const mk = (id: string, running: 1 | 5, primary: "Defence" | "Midfield"): Player => ({
+      id, name: id, primary, secondary: primary === "Defence" ? "Full-back" : "Winger",
+      skill: 3, running, control: false, ageBand: "26-30",
+    });
+    const players: Player[] = [
+      mk("R1", 5, "Defence"), mk("R2", 5, "Midfield"),
+      mk("P1", 1, "Defence"), mk("P2", 1, "Midfield"),
+      { id: "X", name: "X", primary: "Striker", secondary: "Striker", skill: 2, running: 3, control: false, ageBand: "26-30" },
+    ];
+    const result = buildTeams(players, NO_CONSTRAINTS, 9);
+    const s = statsOf(result, players);
+    const small = s.A.count < s.B.count ? s.A : s.B;
+    expect(small.lowRunners).toBe(0);
+    expect(result.checks.find((c) => c.id === "legs")?.pass).toBe(true);
   });
 
   it("even pools are untouched: tier spread stays cardinal", () => {
