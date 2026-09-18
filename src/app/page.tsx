@@ -53,6 +53,8 @@ export default function Home() {
   });
   const [result, setResult] = useState<SplitResult | null>(null);
   const [matchPlayers, setMatchPlayers] = useState<Player[]>([]);
+  const [history, setHistory] = useState<SplitResult[]>([]);
+  const [lastSwap, setLastSwap] = useState<[string, string] | null>(null);
 
   useEffect(() => {
     try {
@@ -109,17 +111,34 @@ export default function Home() {
     const seed = (Date.now() % 100000) + 1;
     setMatchPlayers(selectedPlayers);
     setResult(buildTeams(selectedPlayers, constraints, seed));
+    setHistory([]);
+    setLastSwap(null);
     setTab("teams");
   };
 
   const reroll = () => {
     if (!result) return;
     setResult(rerollTeams(matchPlayers, constraints, result));
+    setHistory([]);
+    setLastSwap(null);
   };
 
   const swap = (idX: string, idY: string) => {
     if (!result) return;
-    setResult(manualSwap(result, matchPlayers, constraints, idX, idY));
+    const next = manualSwap(result, matchPlayers, constraints, idX, idY);
+    if (next === result) return; // illegal/no-op swap
+    setHistory((h) => [...h, result]);
+    setLastSwap([idX, idY]);
+    setResult(next);
+  };
+
+  const undoSwap = () => {
+    setHistory((h) => {
+      if (h.length === 0) return h;
+      setResult(h[h.length - 1]);
+      return h.slice(0, -1);
+    });
+    setLastSwap(null);
   };
 
   const tabs: { id: Tab; label: string }[] = [
@@ -163,7 +182,16 @@ export default function Home() {
           />
         )}
         {tab === "teams" && (
-          <TeamsTab result={result} onReroll={reroll} onSwap={swap} onGoPick={() => setTab("match")} />
+          <TeamsTab
+            result={result}
+            prevResult={history.length > 0 ? history[history.length - 1] : null}
+            lastSwap={lastSwap}
+            canUndo={history.length > 0}
+            onUndo={undoSwap}
+            onReroll={reroll}
+            onSwap={swap}
+            onGoPick={() => setTab("match")}
+          />
         )}
         {tab === "roster" && (
           <RosterTab roster={roster} isDemo={isDemo} onChange={updateRoster} />
