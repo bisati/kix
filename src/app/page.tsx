@@ -22,8 +22,7 @@ const SELECTED_KEY = "kix:selected";
 // One-time migration from the pre-rename keys.
 const LEGACY_KEYS = { roster: "fair-teams:roster", selected: "fair-teams:selected" };
 
-const TabIcon = ({ tab, active }: { tab: Tab; active: boolean }) => {
-  const cls = `h-5 w-5 ${active ? "stroke-pitch" : "stroke-stone-400"}`;
+const TabIcon = ({ tab, className: cls }: { tab: Tab; className: string }) => {
   if (tab === "match")
     return (
       <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" className={cls}>
@@ -69,7 +68,9 @@ export default function Home() {
         localStorage.getItem(ROSTER_KEY) ?? localStorage.getItem(LEGACY_KEYS.roster);
       if (stored) {
         const parsed: Player[] = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        // An empty array is a real saved state ("delete all"), not a miss —
+        // only fall back to the demo squad when nothing valid is stored.
+        if (Array.isArray(parsed)) {
           setRoster(parsed);
           setIsDemo(false);
         }
@@ -157,16 +158,59 @@ export default function Home() {
   ];
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pt-5 pb-[7.5rem]">
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <Logo />
-          <p className="mt-1.5 text-sm font-medium text-stone-500">
-            Fair teams. Zero arguments.
-          </p>
+    <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pt-5 pb-[7.5rem] lg:pb-28">
+      <header className="mb-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <Logo />
+            <p className="mt-1.5 text-sm font-medium text-stone-500">
+              Fair teams. Zero arguments.
+            </p>
+          </div>
+
+          {/* Desktop navigation: a segmented control in the header. The
+              thumb-reach bottom bar below takes over under lg. */}
+          <nav
+            aria-label="Sections"
+            className="hidden rounded-xl border border-stone-200 bg-white p-1 shadow-sm lg:flex"
+          >
+            {tabs.map((t) => {
+              const active = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex min-h-[2.5rem] items-center gap-2 rounded-lg px-4 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch ${
+                    active
+                      ? "bg-pitch text-white shadow-sm"
+                      : "text-stone-500 hover:bg-stone-50 hover:text-stone-700"
+                  }`}
+                >
+                  <TabIcon
+                    tab={t.id}
+                    className={`h-4 w-4 ${
+                      active ? "stroke-white" : "stroke-stone-400"
+                    }`}
+                  />
+                  {t.label}
+                  {t.id === "match" && selectedIds.size > 0 && (
+                    <span
+                      className={`rounded-full px-1.5 text-[10px] font-bold ${
+                        active ? "bg-white/25 text-white" : "bg-stone-200 text-stone-600"
+                      }`}
+                    >
+                      {selectedIds.size}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
         </div>
+
         {isDemo && hydrated && (
-          <p className="animate-rise rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+          <p className="animate-rise w-fit rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
             Demo squad loaded — import yours in{" "}
             <button
               onClick={() => setTab("roster")}
@@ -208,7 +252,8 @@ export default function Home() {
       </main>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200/80 bg-white/90 backdrop-blur-md"
+        aria-label="Sections"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200/80 bg-white/90 backdrop-blur-md lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="mx-auto flex max-w-5xl px-2">
@@ -223,7 +268,12 @@ export default function Home() {
                   active ? "text-pitch" : "text-stone-400 hover:text-stone-600"
                 }`}
               >
-                <TabIcon tab={t.id} active={active} />
+                <TabIcon
+                  tab={t.id}
+                  className={`h-5 w-5 ${
+                    active ? "stroke-pitch" : "stroke-stone-400"
+                  }`}
+                />
                 <span className="flex items-center gap-1">
                   {t.label}
                   {t.id === "match" && selectedIds.size > 0 && (

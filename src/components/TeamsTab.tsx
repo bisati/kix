@@ -5,6 +5,7 @@ import { toShareText } from "@/lib/format";
 import { Player, SplitResult, TeamView } from "@/lib/types";
 import { Ball } from "@/components/Logo";
 import { initials } from "@/components/MatchDayTab";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface Props {
   result: SplitResult | null;
@@ -548,6 +549,7 @@ export default function TeamsTab({
   const [swapMode, setSwapMode] = useState(false);
   const [armedId, setArmedId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [confirmReroll, setConfirmReroll] = useState(false);
 
   if (!result) {
     return (
@@ -658,7 +660,7 @@ export default function TeamsTab({
 
         <div className="flex gap-2">
           <button
-            onClick={onReroll}
+            onClick={() => setConfirmReroll(true)}
             className="min-h-[2.9rem] flex-1 rounded-xl border border-stone-200 bg-white text-sm font-bold text-stone-700 shadow-sm transition-all hover:-translate-y-px hover:border-pitch hover:text-pitch active:scale-95"
           >
             ↻ Re-roll
@@ -772,6 +774,21 @@ export default function TeamsTab({
           )}
         </section>
       </div>
+
+      <ConfirmDialog
+        open={confirmReroll}
+        title="Re-roll the teams?"
+        body="Kix builds a fresh split from the same squad. Today's teams — and any swaps you've made — are replaced, and this arrangement can't be brought back."
+        confirmLabel="Re-roll teams"
+        tone="neutral"
+        onConfirm={() => {
+          setConfirmReroll(false);
+          setSwapMode(false);
+          setArmedId(null);
+          onReroll();
+        }}
+        onCancel={() => setConfirmReroll(false)}
+      />
     </div>
   );
 }

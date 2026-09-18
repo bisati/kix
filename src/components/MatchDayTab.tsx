@@ -669,10 +669,7 @@ export default function MatchDayTab({
       />
 
       {/* Sticky build CTA, docked above the tab bar in thumb reach */}
-      <div
-        className="fixed inset-x-0 z-30"
-        style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom))" }}
-      >
+      <div className="cta-dock fixed inset-x-0 z-30">
         <div className="mx-auto max-w-5xl px-4 pb-2">
           <button
             onClick={onBuild}

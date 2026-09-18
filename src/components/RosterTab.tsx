@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { DEMO_ROSTER } from "@/data/demo-roster";
 import { parseRosterCsv, serializeRosterCsv } from "@/lib/csv";
 import { Player, Position, POSITIONS } from "@/lib/types";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface Props {
   roster: Player[];
@@ -26,6 +27,7 @@ export default function RosterTab({ roster, isDemo, onChange }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<Omit<Player, "id">>(EMPTY);
   const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [confirming, setConfirming] = useState<"reset" | "deleteAll" | null>(null);
 
   const startEdit = (p?: Player) => {
     if (p) {
@@ -117,14 +119,24 @@ export default function RosterTab({ roster, isDemo, onChange }: Props) {
         >
           + Add player
         </button>
-        {!isDemo && (
-          <button
-            onClick={() => onChange(DEMO_ROSTER, true)}
-            className="ml-auto text-xs font-medium text-stone-400 underline underline-offset-2 hover:text-stone-600"
-          >
-            reset to demo
-          </button>
-        )}
+        <div className="ml-auto flex items-center gap-3">
+          {roster.length > 0 && (
+            <button
+              onClick={() => setConfirming("deleteAll")}
+              className="text-xs font-semibold text-rose-500 underline underline-offset-2 hover:text-rose-700"
+            >
+              Delete all
+            </button>
+          )}
+          {!isDemo && (
+            <button
+              onClick={() => setConfirming("reset")}
+              className="text-xs font-medium text-stone-400 underline underline-offset-2 hover:text-stone-600"
+            >
+              reset to demo
+            </button>
+          )}
+        </div>
       </div>
 
       <p className="text-xs font-medium text-stone-400">
@@ -244,6 +256,15 @@ export default function RosterTab({ roster, isDemo, onChange }: Props) {
         </div>
       )}
 
+      {roster.length === 0 && (
+        <div className="animate-rise rounded-2xl border-2 border-dashed border-stone-200 px-6 py-10 text-center">
+          <p className="font-bold">Roster is empty</p>
+          <p className="mt-1 text-sm text-stone-500">
+            Import a CSV or add players one by one to get started.
+          </p>
+        </div>
+      )}
+
       <div className="space-y-4">
         {POSITIONS.map((pos) => {
           const group = roster.filter((p) => p.primary === pos);
@@ -291,6 +312,31 @@ export default function RosterTab({ roster, isDemo, onChange }: Props) {
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={confirming === "deleteAll"}
+        title={`Delete all ${roster.length} players?`}
+        body="Your whole roster is removed from this browser. This can't be undone — export a CSV first if you want a backup."
+        confirmLabel="Delete all"
+        onConfirm={() => {
+          onChange([], false);
+          setEditing(null);
+          setConfirming(null);
+        }}
+        onCancel={() => setConfirming(null)}
+      />
+      <ConfirmDialog
+        open={confirming === "reset"}
+        title="Reset to the demo squad?"
+        body={`Your ${roster.length} players are replaced by the ${DEMO_ROSTER.length} demo players. This can't be undone — export a CSV first if you want to keep them.`}
+        confirmLabel="Reset to demo"
+        onConfirm={() => {
+          onChange(DEMO_ROSTER, true);
+          setEditing(null);
+          setConfirming(null);
+        }}
+        onCancel={() => setConfirming(null)}
+      />
     </div>
   );
 }
