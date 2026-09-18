@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toShareText } from "@/lib/format";
 import { Player, SplitResult, TeamView } from "@/lib/types";
 import { Ball } from "@/components/Logo";
-import { Avatar } from "@/components/MatchDayTab";
+import { initials } from "@/components/MatchDayTab";
 
 interface Props {
   result: SplitResult | null;
@@ -34,13 +34,11 @@ const TEAM_META = {
     kit: "Whites",
     strip: "border-b border-stone-300 bg-teama",
     chip: "bg-teama text-ink ring-1 ring-stone-300",
-    ring: "ring-white",
   },
   B: {
     kit: "Reds",
     strip: "bg-teamb",
     chip: "bg-teamb text-white",
-    ring: "ring-teamb",
   },
 } as const;
 
@@ -178,6 +176,56 @@ function fieldLines(team: TeamView) {
   return [gk, back, mid, front].filter((line) => line.length > 0);
 }
 
+/** Kit shirt with the player's initials on the chest — white for A, red for B. */
+function Jersey({
+  name,
+  team,
+  armed,
+  swapped,
+  hoverable,
+}: {
+  name: string;
+  team: "A" | "B";
+  armed: boolean;
+  swapped: boolean;
+  hoverable: boolean;
+}) {
+  const white = team === "A";
+  return (
+    <svg
+      viewBox="0 0 64 60"
+      aria-hidden="true"
+      className={`h-11 w-11 drop-shadow-md transition-transform ${
+        armed ? "scale-110" : hoverable ? "hover:scale-110" : ""
+      }`}
+    >
+      <path
+        d="M23 5 L8 13 L13 29 L20 25 L20 55 L44 55 L44 25 L51 29 L56 13 L41 5 C38 12 26 12 23 5 Z"
+        fill={white ? "#ffffff" : "var(--color-teamb)"}
+        stroke={
+          armed || swapped
+            ? "#fbbf24"
+            : white
+            ? "#a8a29e"
+            : "var(--color-teamb-deep)"
+        }
+        strokeWidth={armed ? 3 : 2}
+        strokeLinejoin="round"
+      />
+      <text
+        x="32"
+        y="41"
+        textAnchor="middle"
+        fontSize="16"
+        fontWeight="800"
+        fill={white ? "var(--color-ink)" : "#ffffff"}
+      >
+        {initials(name)}
+      </text>
+    </svg>
+  );
+}
+
 function FieldDot({
   row,
   team,
@@ -200,21 +248,18 @@ function FieldDot({
     <button
       onClick={() => onTap(p.id)}
       disabled={!swapArmed}
-      className={`flex w-14 flex-col items-center gap-0.5 ${
+      className={`flex w-14 flex-col items-center ${
         swapArmed ? "cursor-pointer" : ""
       }`}
       title={`${p.name} — ${row.position}${row.isSecondary ? " (secondary)" : ""}`}
     >
       <span className="relative">
-        <Avatar
+        <Jersey
           name={p.name}
-          className={`h-9 w-9 text-[11px] ring-2 shadow-md transition-transform ${
-            armed
-              ? "ring-amber-400 scale-110"
-              : justSwapped
-              ? "ring-amber-400"
-              : TEAM_META[team].ring
-          } ${swapArmed && !armed ? "hover:scale-110" : ""}`}
+          team={team}
+          armed={armed}
+          swapped={justSwapped}
+          hoverable={swapArmed && !armed}
         />
         {row.isSecondary && (
           <span

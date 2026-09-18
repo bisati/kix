@@ -39,7 +39,7 @@ function avatarStyle(name: string) {
   return AVATAR_STYLES[h % AVATAR_STYLES.length];
 }
 
-function initials(name: string) {
+export function initials(name: string) {
   const words = name.trim().split(/\s+/);
   return (words[0][0] + (words[1]?.[0] ?? "")).toUpperCase();
 }
