@@ -2,12 +2,16 @@
 
 @theme {
   /* Brand */
-  --color-pitch: #15803d; /* Team A + primary actions (validated pair) */
+  --color-pitch: #15803d; /* primary actions, pass states, field */
   --color-pitch-deep: #14532d;
   --color-pitch-soft: #dcfce7;
-  --color-teamb: #6366f1; /* Team B (CVD-safe against pitch green) */
-  --color-teamb-deep: #4338ca;
-  --color-teamb-soft: #e0e7ff;
+  /* Kits: Team A plays in white, Team B in red (ΔE 42+ under CVD).
+     White marks always carry a teama-line outline so they read on white. */
+  --color-teama: #ffffff;
+  --color-teama-line: #d6d3d1;
+  --color-teamb: #dc2626;
+  --color-teamb-deep: #991b1b;
+  --color-teamb-soft: #fee2e2;
   --color-pop: #a3e635; /* lime accent */
   --color-ink: #1c1917;
   --color-paper: #fafaf9;

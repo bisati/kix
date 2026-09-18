@@ -26,9 +26,22 @@ const POS_SHORT: Record<string, string> = {
   Striker: "ST",
 };
 
+/* Kit colors: Team A plays in white, Team B in red. The kit name appears in
+   text beside every colored mark, so identity is never color-alone — and the
+   white kit always wears a stone outline to stay visible on white cards. */
 const TEAM_META = {
-  A: { color: "var(--color-pitch)", chip: "bg-pitch", ring: "ring-pitch" },
-  B: { color: "var(--color-teamb)", chip: "bg-teamb", ring: "ring-teamb" },
+  A: {
+    kit: "Whites",
+    strip: "border-b border-stone-300 bg-teama",
+    chip: "bg-teama text-ink ring-1 ring-stone-300",
+    ring: "ring-white",
+  },
+  B: {
+    kit: "Reds",
+    strip: "bg-teamb",
+    chip: "bg-teamb text-white",
+    ring: "ring-teamb",
+  },
 } as const;
 
 /* ---------------- List view ---------------- */
@@ -54,16 +67,19 @@ function TeamCard({
       className="animate-rise flex-1 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm"
       style={{ animationDelay: `${delay}ms` }}
     >
-      <div className="h-1.5" style={{ background: meta.color }} />
+      <div className={`h-1.5 ${meta.strip}`} />
       <div className="p-3.5">
         <div className="mb-2.5 flex items-baseline justify-between">
           <h3 className="flex items-center gap-2 text-base font-extrabold">
             <span
-              className={`grid h-6 w-6 place-items-center rounded-lg text-xs font-black text-white ${meta.chip}`}
+              className={`grid h-6 w-6 place-items-center rounded-lg text-xs font-black ${meta.chip}`}
             >
               {team.team}
             </span>
             Team {team.team}
+            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+              {meta.kit}
+            </span>
           </h3>
           <span className="text-xs font-semibold text-stone-500">
             ★{team.skillTotal} · avg {team.skillAvg.toFixed(1)} · ⚡
@@ -294,12 +310,12 @@ function FieldView({
       <div className="relative flex h-[520px] flex-col">
         {/* Team B defends the top goal */}
         <div className="absolute left-2.5 top-2.5 z-10 rounded-lg bg-teamb px-2 py-0.5 text-[10px] font-black text-white shadow">
-          TEAM B
+          TEAM B · REDS
         </div>
         {half(B, true)}
         {half(A, false)}
-        <div className="absolute bottom-2.5 right-2.5 z-10 rounded-lg bg-pitch px-2 py-0.5 text-[10px] font-black text-white shadow">
-          TEAM A
+        <div className="absolute bottom-2.5 right-2.5 z-10 rounded-lg bg-teama px-2 py-0.5 text-[10px] font-black text-ink shadow">
+          TEAM A · WHITES
         </div>
       </div>
     </div>
@@ -458,7 +474,7 @@ function BalanceBar({ label, a, b }: { label: string; a: number; b: number }) {
       </span>
       <div className="flex h-2 flex-1 gap-[2px]">
         <div
-          className="animate-bar rounded-l-[4px] bg-pitch"
+          className="animate-bar rounded-l-[4px] bg-teama ring-1 ring-inset ring-teama-line"
           style={{ width: `calc(${(a / total) * 100}% - 1px)` }}
         />
         <div
@@ -637,7 +653,8 @@ export default function TeamsTab({
             <h3 className="text-sm font-bold">Balance</h3>
             <span className="flex items-center gap-3 text-[11px] font-semibold text-stone-500">
               <span className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-[3px] bg-pitch" /> Team A
+                <span className="h-2.5 w-2.5 rounded-[3px] bg-teama ring-1 ring-inset ring-stone-400" />{" "}
+                Team A
               </span>
               <span className="flex items-center gap-1">
                 <span className="h-2.5 w-2.5 rounded-[3px] bg-teamb" /> Team B
