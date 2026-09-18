@@ -139,38 +139,67 @@ describe("skill balance (rung 4)", () => {
   });
 });
 
-describe("odd headcount — per-man fairness (regression: odd games always amber)", () => {
-  it("passes odd-count when the bigger side is not stronger per player", () => {
-    // Tiers 4s:2, 3s:6, 2s:1 — the old raw-total rule is unsatisfiable here
-    // (bigger side's total is higher by construction), but per-man fairness is.
+describe("odd headcount — compensation (fewer players ⇒ stronger players)", () => {
+  it("gives the smaller team enough extra skill to offset the missing body", () => {
+    // Tiers 4s:2, 3s:6, 2s:1 (total 28). With equal averages the 5-side just
+    // wins, so the 4-side must take the skill: e.g. both 4s → 14 v 14.
     const players = pick([
       "Dev", "Rohan", "Harsh", "Ritvik", "Kabir", "Sameer", "Manav", "Nikhil", "Zaid",
     ]);
     const result = buildTeams(players, NO_CONSTRAINTS, 7);
     const s = statsOf(result, players);
-    const [big, small] =
-      s.A.count > s.B.count ? [s.A, s.B] : [s.B, s.A];
-    expect(big.skillTotal * small.count).toBeLessThanOrEqual(
-      small.skillTotal * big.count
-    );
+    const [big, small] = s.A.count > s.B.count ? [s.A, s.B] : [s.B, s.A];
+    expect(big.skillTotal).toBeLessThanOrEqual(small.skillTotal);
+    expect(small.skillTotal - big.skillTotal).toBeLessThanOrEqual(2);
     expect(result.checks.find((c) => c.id === "odd-count")?.pass).toBe(true);
     expect(result.checks.find((c) => c.id === "totals")?.pass).toBe(true);
+    // Tier stacking toward the smaller team is the intended compensation,
+    // never an amber.
+    expect(result.checks.find((c) => c.id === "tiers")?.pass).toBe(true);
   });
 
-  it("marks a tier-forced total gap as best-possible, not as a failure", () => {
-    // Tiers 5:1, 4:2, 3:2 — the lone 5 forces a gap of 5; no split does better.
+  it("hits the exact compensation floor when full compensation is impossible", () => {
+    // Pool {5,4,4,3,3}: the weakest 3-player side is {4,3,3}=10 vs {5,4}=9 —
+    // the big side is ahead by 1 in EVERY split. Tier-legal splits forced a
+    // gap of 5; the engine must find the floor (10v9) and the check must
+    // pass as unavoidable, not blame the engine.
     const players = pick(["Vikram", "Dev", "Rohan", "Harsh", "Ritvik"]);
     const result = buildTeams(players, NO_CONSTRAINTS, 3);
     const s = statsOf(result, players);
-    expect(Math.abs(s.A.skillTotal - s.B.skillTotal)).toBe(5);
-    const totals = result.checks.find((c) => c.id === "totals");
-    expect(totals?.pass).toBe(true);
-    expect(totals?.detail).toContain("minimum possible");
-    // Per-man rule is unavoidably violated here (the extra IS the 5) — the
-    // check must say so rather than blame the engine.
+    const [big, small] = s.A.count > s.B.count ? [s.A, s.B] : [s.B, s.A];
+    expect(big.skillTotal - small.skillTotal).toBe(1);
     const odd = result.checks.find((c) => c.id === "odd-count");
     expect(odd?.pass).toBe(true);
-    expect(odd?.detail).toContain("unavoidable");
+    expect(odd?.detail).toContain("closest");
+  });
+
+  it("flags honestly when compensation is impossible (identical ratings)", () => {
+    // Nine players all rated 3: the bigger side is stronger no matter what.
+    const clones: Player[] = Array.from({ length: 9 }, (_, i) => ({
+      id: `C${i}`,
+      name: `C${i}`,
+      primary: (["Defence", "Full-back", "Midfield", "Winger", "Striker"] as const)[i % 5],
+      secondary: "Midfield",
+      skill: 3,
+      running: 3,
+      control: false,
+      ageBand: "26-30",
+    }));
+    const result = buildTeams(clones, NO_CONSTRAINTS, 5);
+    const odd = result.checks.find((c) => c.id === "odd-count");
+    expect(odd?.pass).toBe(true);
+    expect(odd?.detail).toContain("closest");
+  });
+
+  it("even pools are untouched: tier spread stays cardinal", () => {
+    const result = buildTeams(DEMO_ROSTER, NO_CONSTRAINTS, 13);
+    const s = statsOf(result, DEMO_ROSTER);
+    for (const tier of [5, 4, 3, 2, 1]) {
+      expect(
+        Math.abs(s.A.tierCount[tier] - s.B.tierCount[tier]),
+        `tier ${tier}`
+      ).toBeLessThanOrEqual(1);
+    }
   });
 });
 

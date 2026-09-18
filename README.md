@@ -14,7 +14,8 @@ The balancing engine implements a strict priority ladder:
 2. **Your pins** — "keep these two apart / together" overrides everything below.
 3. **Position balance** — per-position counts differ by at most 1; out-of-position placements are legal only at a player's secondary position, flagged, and shared between teams.
 4. **Skill balance** — every skill tier (5s → 1s) splits evenly *before* totals are compared; game-controllers (playmakers) split evenly; midfields must be within 2 skill points of each other.
-5. **Mobility** — running ability and age only break ties between otherwise-equal options.
+5. **Odd headcounts: fewer players ⇒ stronger players.** With equal averages the bigger team simply wins, so the smaller team deliberately takes the better players (tier mirroring relaxes just enough to allow it) until its total matches or beats the bigger side's — bounded by football shape: no team is left without a midfield just to equalize totals.
+6. **Mobility** — running ability and age only break ties between otherwise-equal options.
 
 Under the hood: a goalkeeper-first snake draft seeds the split, then best-improvement hill climbing over player swaps repairs it against a lexicographic cost function that encodes the ladder. Twelve seeded restarts with increasing perturbation escape local optima. Everything is deterministic per seed — Re-roll is a new seed, not a shrug.
 
@@ -24,6 +25,7 @@ Under the hood: a goalkeeper-first snake draft seeds the split, then best-improv
 
 - **Logic in code, not in an LLM.** This started as an agent prompt that split teams over chat. Six prompt versions in — each one patching a failure a player complained about (stacked out-of-position placements, one-sided midfields, controller pile-ups) — the rules were precise enough that an LLM added only latency and variance. The prompt's changelog became the engine's test suite: every historical failure is a regression test in [`engine.test.ts`](src/lib/engine/engine.test.ts).
 - **Tier spread beats totals.** Two teams with equal totals can still be unfair — a team with both 5-star players wins even if totals match. Splitting each skill tier is the primary rule; totals are secondary. This came from a real bad Saturday, not from theory.
+- **Except in odd games, where compensation beats mirroring.** Nine players split 4v5 with matched tiers means the 5-side always wins. So for odd headcounts the smaller team takes the stronger players — the missing body is paid for in quality, and the verification panel shows the trade explicitly.
 - **The proof is the product.** The balance bars and checklist exist because "trust me, it's fair" doesn't survive contact with 15 opinionated friends. Showing the checks turned arguments about teams into arguments about ratings — a much better argument to have.
 - **Your roster never leaves your phone.** Import a CSV once; it lives in localStorage. The repo and the live demo ship with fictional players. No accounts, no server, no analytics on your friends' skill ratings.
 

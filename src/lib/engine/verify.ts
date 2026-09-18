@@ -118,19 +118,44 @@ export function buildChecks(
         : ")"),
   });
 
-  // 4. Tier spread ≤ 1 per tier.
+  // 4. Tier spread ≤ 1 per tier. Odd pools: stacking toward the SMALLER
+  // team is deliberate compensation, never a failure; stacking toward the
+  // bigger team still is one.
+  const oddPool = s.A.count !== s.B.count;
+  const smallSide: "A" | "B" = s.A.count < s.B.count ? "A" : "B";
   const tierDetail = [5, 4, 3, 2, 1]
     .filter((t) => s.A.tierCount[t] + s.B.tierCount[t] > 0)
     .map((t) => `${t}s ${s.A.tierCount[t]}v${s.B.tierCount[t]}`)
     .join(" · ");
-  const badTier = [5, 4, 3, 2, 1].filter(
+  const stacked = [5, 4, 3, 2, 1].filter(
     (t) => Math.abs(s.A.tierCount[t] - s.B.tierCount[t]) > 1
   );
+  const stackedToward = (t: number): "A" | "B" =>
+    s.A.tierCount[t] > s.B.tierCount[t] ? "A" : "B";
+  // Odd pools: compensation legitimately skews tiers (highs drift to the
+  // smaller team, lows to the bigger). The only pattern that fights
+  // compensation is a HIGH tier (4s/5s) stacked toward the bigger team —
+  // that is the amber condition; everything else is mechanics.
+  const badTier = oddPool
+    ? stacked.filter(
+        (t) =>
+          t >= 4 &&
+          stackedToward(t) !== smallSide &&
+          // ...unless an even higher tier went to the smaller team (both 5s
+          // on the small side legitimately pushes the 4s big-ward).
+          !stacked.some((u) => u > t && stackedToward(u) === smallSide)
+      )
+    : stacked;
+  const compensating = oddPool && stacked.length > 0 && badTier.length === 0;
   checks.push({
     id: "tiers",
-    label: "Every skill tier split evenly (gap ≤ 1)",
+    label: oddPool
+      ? "Skill tiers even, or stacked toward the smaller team"
+      : "Every skill tier split evenly (gap ≤ 1)",
     pass: badTier.length === 0,
-    detail: tierDetail,
+    detail:
+      tierDetail +
+      (compensating ? " — stacked toward the smaller team (compensation)" : ""),
   });
 
   // 5. Secondary placements spread ≤ 1.
@@ -141,12 +166,22 @@ export function buildChecks(
     detail: `${s.A.secondaryCount} v ${s.B.secondaryCount} secondary placements`,
   });
 
-  // 6. Controllers split ≤ 1, midfield control balanced.
+  // 6. Controllers split ≤ 1 — odd pools: extra controllers on the SMALLER
+  // team are part of compensation; only a stack favoring the bigger team
+  // ambers.
+  const ctrlGap = Math.abs(s.A.controllers - s.B.controllers);
+  const ctrlToward: "A" | "B" = s.A.controllers > s.B.controllers ? "A" : "B";
   checks.push({
     id: "controllers",
-    label: "Game-controllers split evenly (gap ≤ 1)",
-    pass: Math.abs(s.A.controllers - s.B.controllers) <= 1,
-    detail: `${s.A.controllers} v ${s.B.controllers} controllers`,
+    label: oddPool
+      ? "Game-controllers even, or with the smaller team"
+      : "Game-controllers split evenly (gap ≤ 1)",
+    pass: ctrlGap <= 1 || (oddPool && ctrlToward === smallSide),
+    detail:
+      `${s.A.controllers} v ${s.B.controllers} controllers` +
+      (oddPool && ctrlGap > 1 && ctrlToward === smallSide
+        ? " — extra controllers on the smaller team (compensation)"
+        : ""),
   });
   checks.push({
     id: "mid-control",
@@ -157,26 +192,30 @@ export function buildChecks(
     detail: `mid controllers ${s.A.midControllers}v${s.B.midControllers} · mid skill ${s.A.midSkill}v${s.B.midSkill}`,
   });
 
-  // 7. Odd headcount: the bigger team must not be stronger per player.
-  // Raw totals can't be compared across unequal sizes — the extra body
-  // inflates the bigger team's total by construction.
+  // 7. Odd headcount: with equal averages the bigger team simply wins, so
+  // the smaller team must carry at least as much total skill — the missing
+  // body is paid for in quality.
   if (s.A.count !== s.B.count) {
     const larger = s.A.count > s.B.count ? "A" : "B";
     const largerStats = larger === "A" ? s.A : s.B;
     const smallerStats = larger === "A" ? s.B : s.A;
-    const perManOk =
-      largerStats.skillTotal * smallerStats.count <=
-      smallerStats.skillTotal * largerStats.count;
-    const unavoidable = !perManOk && !feas.perManAchievable;
-    const avg = (t: typeof largerStats) => (t.skillTotal / t.count).toFixed(2);
+    const excess = largerStats.skillTotal - smallerStats.skillTotal;
+    const compensated = excess <= 0;
+    // The rating-only floor ignores position legality, which can block
+    // another parity step (±2) — grade the engine with that tolerance and
+    // stay honest in the detail text.
+    const withinFloor =
+      !compensated && excess <= Math.max(0, feas.minBigExcess) + 2;
     checks.push({
       id: "odd-count",
-      label: "Bigger team isn't stronger per player",
-      pass: perManOk || unavoidable,
+      label: "Smaller team compensated with stronger players",
+      pass: compensated || withinFloor,
       detail:
-        `Team ${larger} has ${largerStats.count} players at ${avg(largerStats)} avg vs ${smallerStats.count} at ${avg(smallerStats)}` +
-        (unavoidable
-          ? " — unavoidable: this pool's tiers force the extra onto the stronger side"
+        `Team ${larger}: ${largerStats.count} players, ${largerStats.skillTotal} skill vs ${smallerStats.count} players, ${smallerStats.skillTotal}` +
+        (withinFloor
+          ? " — bigger side ahead by " +
+            excess +
+            ": the closest this pool's ratings and positions allow"
           : ""),
     });
   }

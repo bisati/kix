@@ -101,9 +101,16 @@ function seedAssignments(
 }
 
 type Move =
-  | { kind: "swap"; i: number; j: number }
-  | { kind: "shift"; i: number }
+  | { kind: "swap"; i: number; j: number; reposI?: boolean; reposJ?: boolean }
+  | { kind: "shift"; i: number; reposI?: boolean }
   | { kind: "repos"; i: number };
+
+function togglePosition(a: Assignment, byId: Map<string, Player>) {
+  const p = byId.get(a.playerId)!;
+  const other = a.position === p.primary ? p.secondary : p.primary;
+  a.position = other;
+  a.isSecondary = other !== p.primary;
+}
 
 function applyMove(assignments: Assignment[], move: Move, byId: Map<string, Player>): Assignment[] {
   const next = assignments.map((a) => ({ ...a }));
@@ -111,14 +118,13 @@ function applyMove(assignments: Assignment[], move: Move, byId: Map<string, Play
     const t = next[move.i].team;
     next[move.i].team = next[move.j].team;
     next[move.j].team = t;
+    if (move.reposI) togglePosition(next[move.i], byId);
+    if (move.reposJ) togglePosition(next[move.j], byId);
   } else if (move.kind === "shift") {
     next[move.i].team = next[move.i].team === "A" ? "B" : "A";
+    if (move.reposI) togglePosition(next[move.i], byId);
   } else {
-    const a = next[move.i];
-    const p = byId.get(a.playerId)!;
-    const other = a.position === p.primary ? p.secondary : p.primary;
-    a.position = other;
-    a.isSecondary = other !== p.primary;
+    togglePosition(next[move.i], byId);
   }
   return next;
 }
@@ -129,7 +135,8 @@ function repair(
   players: Player[],
   byId: Map<string, Player>,
   constraints: Constraints,
-  maxIters = 300
+  maxIters = 300,
+  positionsOnly = false
 ): Assignment[] {
   let current = start;
   let currentCost = costVector(current, byId, players, constraints);
@@ -140,14 +147,27 @@ function repair(
 
     const moves: Move[] = [];
     const n = current.length;
+    const canRepos = (idx: number) => {
+      const p = byId.get(current[idx].playerId)!;
+      return p.secondary !== p.primary;
+    };
     for (let i = 0; i < n; i++) {
+      if (canRepos(i)) moves.push({ kind: "repos", i });
+      if (positionsOnly) continue;
       for (let j = i + 1; j < n; j++) {
-        if (current[i].team !== current[j].team)
+        if (current[i].team !== current[j].team) {
           moves.push({ kind: "swap", i, j });
+          // Composite swap+reposition variants cross ridges a plain swap
+          // can't (e.g. a compensating trade that only works if one player
+          // simultaneously covers a different position).
+          if (canRepos(i)) moves.push({ kind: "swap", i, j, reposI: true });
+          if (canRepos(j)) moves.push({ kind: "swap", i, j, reposJ: true });
+          if (canRepos(i) && canRepos(j))
+            moves.push({ kind: "swap", i, j, reposI: true, reposJ: true });
+        }
       }
       moves.push({ kind: "shift", i });
-      const p = byId.get(current[i].playerId)!;
-      if (p.secondary !== p.primary) moves.push({ kind: "repos", i });
+      if (canRepos(i)) moves.push({ kind: "shift", i, reposI: true });
     }
 
     for (const move of moves) {
@@ -188,7 +208,8 @@ function signature(assignments: Assignment[]): string {
 function perturb(
   assignments: Assignment[],
   strength: number,
-  rng: () => number
+  rng: () => number,
+  byId: Map<string, Player>
 ): Assignment[] {
   const next = assignments.map((a) => ({ ...a }));
   for (let k = 0; k < strength; k++) {
@@ -199,8 +220,47 @@ function perturb(
     const j = bIdx[Math.floor(rng() * bIdx.length)];
     next[i].team = "B";
     next[j].team = "A";
+    // Also jitter positions, so restarts explore arrangements that need a
+    // player covering their secondary role from the start.
+    const r = next[Math.floor(rng() * next.length)];
+    const p = byId.get(r.playerId)!;
+    if (p.secondary !== p.primary && rng() < 0.5) togglePosition(r, byId);
   }
   return next;
+}
+
+/**
+ * Small pools (≤13): enumerate EVERY size-legal team split and polish each
+ * with position-only repair. Incremental search can miss arrangements that
+ * need several coordinated position changes; with ≤1716 splits, checking
+ * them all is cheap and deterministic.
+ */
+function exhaustiveSmall(
+  players: Player[],
+  byId: Map<string, Player>,
+  constraints: Constraints
+): { assignments: Assignment[]; cost: number[] } | null {
+  const n = players.length;
+  if (n < 2 || n > 13) return null;
+  const bigCount = Math.ceil(n / 2);
+  let best: { assignments: Assignment[]; cost: number[] } | null = null;
+  for (let mask = 0; mask < 1 << n; mask++) {
+    let cnt = 0;
+    for (let i = 0; i < n; i++) if (mask & (1 << i)) cnt++;
+    if (cnt !== bigCount) continue;
+    const start: Assignment[] = players.map((p, i) => ({
+      playerId: p.id,
+      team: mask & (1 << i) ? "A" : "B",
+      position: p.primary,
+      isSecondary: false,
+    }));
+    const polished = repair(start, players, byId, constraints, 40, true);
+    const cost = costVector(polished, byId, players, constraints);
+    if (!best || compareCost(cost, best.cost) < 0) {
+      best = { assignments: polished, cost };
+    }
+  }
+  return best;
 }
 
 export function buildTeams(
@@ -215,12 +275,17 @@ export function buildTeams(
   for (let r = 0; r < restarts; r++) {
     const rng = mulberry32(seed * 1000003 + r * 97);
     const seeded = seedAssignments(players, rng);
-    const start = perturb(seeded, Math.min(r, 6), rng);
+    const start = perturb(seeded, Math.min(r, 6), rng, byId);
     const repaired = repair(start, players, byId, constraints);
     const cost = costVector(repaired, byId, players, constraints);
     if (!best || compareCost(cost, best.cost) < 0) {
       best = { assignments: repaired, cost };
     }
+  }
+
+  const exhaustive = exhaustiveSmall(players, byId, constraints);
+  if (exhaustive && compareCost(exhaustive.cost, best!.cost) < 0) {
+    best = exhaustive;
   }
 
   return finalize(best!.assignments, players, byId, constraints, seed);

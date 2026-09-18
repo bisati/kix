@@ -79,39 +79,68 @@ function poolFor(pos: Position, players: Player[]): number {
 }
 
 export interface PoolFeasibility {
-  /** Smallest total-skill gap any tier-legal split of this pool can achieve. */
+  /** Smallest total-skill gap any legal split of this pool can achieve. */
   minGap: number;
   /**
-   * Odd pools: can any tier-legal split make the bigger team no stronger
-   * per player than the smaller one? (Even pools: trivially true.)
+   * Odd pools: the smallest achievable (bigger-team total − smaller-team
+   * total) over ALL size-legal splits. ≤ 0 means the smaller side CAN be
+   * made at least as strong (compensation is possible). Even pools: 0.
    */
-  perManAchievable: boolean;
+  minBigExcess: number;
 }
 
 /**
- * What the pool's tier structure allows, independent of any split. Under
- * tier-legality (gap ≤ 1 per tier), per-team totals are fully determined by
- * which side each odd tier's extra player lands on — so enumerating those
- * ≤ 2^5 assignments gives exact bounds. Checks use this to grade the engine
- * against what is achievable, never against impossible arithmetic.
+ * What this pool allows, independent of any particular split. Checks use it
+ * to grade the engine against what is achievable, never against impossible
+ * arithmetic.
+ *
+ * Odd pools: tier mirroring is deliberately relaxed for compensation, so the
+ * bound ranges over ALL big-side subsets (exact subset-sum DP). Even pools:
+ * tier spread is cardinal, so totals are determined by which side each odd
+ * tier's extra lands on — enumerate those ≤ 2^5 assignments.
  */
 export function poolFeasibility(players: Player[]): PoolFeasibility {
-  let base = 0; // per-side total from evenly split tiers
-  let K = 0; // per-side player count from evenly split tiers
-  const extras: number[] = []; // one entry (the skill value) per odd tier
+  const n = players.length;
+  if (n < 2) return { minGap: 0, minBigExcess: 0 };
+  const total = players.reduce((s, p) => s + p.skill, 0);
+
+  if (n % 2 === 1) {
+    const bigCount = Math.ceil(n / 2);
+    // dp[c][s] = a c-player subset with skill sum s exists
+    const dp: boolean[][] = Array.from({ length: bigCount + 1 }, () =>
+      new Array(total + 1).fill(false)
+    );
+    dp[0][0] = true;
+    for (const p of players) {
+      for (let c = bigCount; c >= 1; c--) {
+        for (let s = total; s >= p.skill; s--) {
+          if (dp[c - 1][s - p.skill]) dp[c][s] = true;
+        }
+      }
+    }
+    let minGap = Infinity;
+    let minBigExcess = Infinity;
+    for (let s = 0; s <= total; s++) {
+      if (!dp[bigCount][s]) continue;
+      const excess = s - (total - s); // bigTotal − smallTotal
+      minGap = Math.min(minGap, Math.abs(excess));
+      minBigExcess = Math.min(minBigExcess, excess);
+    }
+    return { minGap, minBigExcess };
+  }
+
+  // Even pool: floor under tier-legality via odd-tier extras enumeration.
+  let base = 0;
+  const extras: number[] = [];
   for (const tier of [5, 4, 3, 2, 1]) {
     const c = players.filter((p) => p.skill === tier).length;
-    const k = Math.floor(c / 2);
-    K += k;
-    base += k * tier;
+    base += Math.floor(c / 2) * tier;
     if (c % 2 === 1) extras.push(tier);
   }
   const m = extras.length;
-  if (m === 0) return { minGap: 0, perManAchievable: true };
-
+  if (m === 0) return { minGap: 0, minBigExcess: 0 };
   const extrasSum = extras.reduce((s, e) => s + e, 0);
   let minGap = Infinity;
-  let perManAchievable = false;
   for (let mask = 0; mask < 1 << m; mask++) {
     let s1 = 0;
     let c1 = 0;
@@ -121,20 +150,10 @@ export function poolFeasibility(players: Player[]): PoolFeasibility {
         c1++;
       }
     }
-    const c2 = m - c1;
-    if (Math.abs(c1 - c2) > 1) continue; // headcount must stay within 1
-    const t1 = base + s1;
-    const t2 = base + (extrasSum - s1);
-    minGap = Math.min(minGap, Math.abs(t1 - t2));
-    if (c1 === c2) {
-      perManAchievable = true; // even headcount: per-man rule not in play
-    } else {
-      const [bt, bn, st, sn] =
-        c1 > c2 ? [t1, K + c1, t2, K + c2] : [t2, K + c2, t1, K + c1];
-      if (bt * sn <= st * bn) perManAchievable = true;
-    }
+    if (Math.abs(c1 - (m - c1)) > 1) continue;
+    minGap = Math.min(minGap, Math.abs(base + s1 - (base + extrasSum - s1)));
   }
-  return { minGap, perManAchievable };
+  return { minGap, minBigExcess: 0 };
 }
 
 /**
@@ -204,15 +223,20 @@ export function costVector(
   const totalGap = Math.abs(s.A.skillTotal - s.B.skillTotal);
   const totalExcess = Math.max(0, totalGap - 2);
 
-  // Odd headcount: the bigger team must not be stronger PER PLAYER — the
-  // extra body compensates the weaker side (raw totals can't be compared
-  // across unequal team sizes; the extra body inflates them by construction).
-  let oddPlacement = 0;
+  // Odd headcount: with equal averages the bigger team simply wins, so the
+  // smaller team must carry MORE total skill — the missing body is paid for
+  // in quality. Bigger side ahead = penalized (oddDirection); smaller side
+  // ahead by more than 2 = over-compensation (smallLeadExcess).
+  let oddDirection = 0;
+  let smallLeadExcess = 0;
   if (s.A.count !== s.B.count) {
     const larger = s.A.count > s.B.count ? s.A : s.B;
     const smaller = s.A.count > s.B.count ? s.B : s.A;
-    if (larger.skillTotal * smaller.count > smaller.skillTotal * larger.count)
-      oddPlacement = 1;
+    oddDirection = Math.max(0, larger.skillTotal - smaller.skillTotal);
+    smallLeadExcess = Math.max(
+      0,
+      smaller.skillTotal - larger.skillTotal - 2
+    );
   }
 
   const runningGap = Math.abs(s.A.runningTotal - s.B.runningTotal);
@@ -226,12 +250,15 @@ export function costVector(
     posImbalance,
     shape,
     secondarySpread,
+    // Odd-game compensation outranks tier mirroring: the smaller team takes
+    // the stronger players (with the minimum stacking the terms below allow).
+    oddDirection,
+    smallLeadExcess,
     ...tierViolations,
     controllerGap,
     midControllerGap,
     midSkillExcess,
     totalExcess,
-    oddPlacement, // per-man fairness outranks shaving the raw gap
     totalGap,
     runningGap,
     lowRunnerGap,
