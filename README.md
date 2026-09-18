@@ -1,4 +1,4 @@
-# ⚽ Fair Teams
+# ⚽ Kix
 
 Balanced football teams for a weekly friendly game, in 30 seconds, with the fairness proof on screen.
 

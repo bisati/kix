@@ -7,7 +7,7 @@ export function toShareText(result: SplitResult, date = new Date()): string {
     month: "short",
     year: "numeric",
   });
-  const lines: string[] = [`⚽ Teams — ${d}`, ""];
+  const lines: string[] = [`⚽ Kix teams — ${d}`, ""];
   for (const team of [result.teams.A, result.teams.B]) {
     lines.push(
       `*Team ${team.team}* — skill ${team.skillTotal} (avg ${team.skillAvg.toFixed(1)})`

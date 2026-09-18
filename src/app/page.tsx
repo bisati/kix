@@ -4,14 +4,42 @@ import { useEffect, useMemo, useState } from "react";
 import { DEMO_ROSTER } from "@/data/demo-roster";
 import { buildTeams, manualSwap, rerollTeams } from "@/lib/engine";
 import { Constraints, Player, SplitResult } from "@/lib/types";
+import Logo from "@/components/Logo";
 import RosterTab from "@/components/RosterTab";
 import MatchDayTab from "@/components/MatchDayTab";
 import TeamsTab from "@/components/TeamsTab";
 
 type Tab = "match" | "teams" | "roster";
 
-const ROSTER_KEY = "fair-teams:roster";
-const SELECTED_KEY = "fair-teams:selected";
+const ROSTER_KEY = "kix:roster";
+const SELECTED_KEY = "kix:selected";
+// One-time migration from the pre-rename keys.
+const LEGACY_KEYS = { roster: "fair-teams:roster", selected: "fair-teams:selected" };
+
+const TabIcon = ({ tab, active }: { tab: Tab; active: boolean }) => {
+  const cls = `h-5 w-5 ${active ? "stroke-pitch" : "stroke-stone-400"}`;
+  if (tab === "match")
+    return (
+      <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" className={cls}>
+        <path d="M9 11.5 11 13.5 15.5 9" strokeLinecap="round" strokeLinejoin="round" />
+        <rect x="4" y="5" width="16" height="16" rx="3" />
+        <path d="M8 3v4M16 3v4" strokeLinecap="round" />
+      </svg>
+    );
+  if (tab === "teams")
+    return (
+      <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" className={cls}>
+        <circle cx="8" cy="8.5" r="3" />
+        <circle cx="16.5" cy="9.5" r="2.5" />
+        <path d="M3.5 19c.6-3 2.4-4.5 4.5-4.5S12 16 12.5 19M13.5 18.5c.5-2.2 1.7-3.4 3-3.4s2.6 1.2 3.1 3.4" strokeLinecap="round" />
+      </svg>
+    );
+  return (
+    <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" className={cls}>
+      <path d="M5 6.5h14M5 12h14M5 17.5h9" strokeLinecap="round" />
+    </svg>
+  );
+};
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("match");
@@ -26,10 +54,10 @@ export default function Home() {
   const [result, setResult] = useState<SplitResult | null>(null);
   const [matchPlayers, setMatchPlayers] = useState<Player[]>([]);
 
-  // Load persisted state after mount (static export has no server state).
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(ROSTER_KEY);
+      const stored =
+        localStorage.getItem(ROSTER_KEY) ?? localStorage.getItem(LEGACY_KEYS.roster);
       if (stored) {
         const parsed: Player[] = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -37,7 +65,8 @@ export default function Home() {
           setIsDemo(false);
         }
       }
-      const sel = localStorage.getItem(SELECTED_KEY);
+      const sel =
+        localStorage.getItem(SELECTED_KEY) ?? localStorage.getItem(LEGACY_KEYS.selected);
       if (sel) setSelectedIds(new Set(JSON.parse(sel) as string[]));
     } catch {
       // Corrupt or blocked storage: fall through to the demo roster.
@@ -63,7 +92,6 @@ export default function Home() {
         localStorage.removeItem(ROSTER_KEY);
       } catch {}
     }
-    // Drop selections/constraints that reference players no longer in the roster.
     const ids = new Set(players.map((p) => p.id));
     setSelectedIds((prev) => new Set([...prev].filter((id) => ids.has(id))));
     setConstraints((prev) => ({
@@ -101,18 +129,24 @@ export default function Home() {
   ];
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col px-4 pb-24 pt-6">
-      <header className="mb-5">
-        <h1 className="text-2xl font-bold tracking-tight">
-          ⚽ Fair Teams
-        </h1>
-        <p className="mt-1 text-sm text-stone-500">
-          Pick who showed up. Get two even teams — with the proof.
-        </p>
+    <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pt-5 pb-[7.5rem]">
+      <header className="mb-5 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <Logo />
+          <p className="mt-1.5 text-sm font-medium text-stone-500">
+            Fair teams. Zero arguments.
+          </p>
+        </div>
         {isDemo && hydrated && (
-          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            You&apos;re on the demo roster. Import your own CSV in the Roster
-            tab — it stays in your browser, nothing is uploaded.
+          <p className="animate-rise rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+            Demo squad loaded — import yours in{" "}
+            <button
+              onClick={() => setTab("roster")}
+              className="underline underline-offset-2"
+            >
+              Roster
+            </button>
+            . It stays on this device.
           </p>
         )}
       </header>
@@ -129,33 +163,45 @@ export default function Home() {
           />
         )}
         {tab === "teams" && (
-          <TeamsTab result={result} onReroll={reroll} onSwap={swap} />
+          <TeamsTab result={result} onReroll={reroll} onSwap={swap} onGoPick={() => setTab("match")} />
         )}
         {tab === "roster" && (
           <RosterTab roster={roster} isDemo={isDemo} onChange={updateRoster} />
         )}
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex-1 py-3 text-sm font-medium ${
-                tab === t.id
-                  ? "border-t-2 border-green-600 text-green-700"
-                  : "text-stone-500"
-              }`}
-            >
-              {t.label}
-              {t.id === "match" && selectedIds.size > 0 && (
-                <span className="ml-1 rounded-full bg-green-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                  {selectedIds.size}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200/80 bg-white/90 backdrop-blur-md"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="mx-auto flex max-w-5xl px-2">
+          {tabs.map((t) => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                aria-current={active ? "page" : undefined}
+                className={`flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-pitch ${
+                  active ? "text-pitch" : "text-stone-400 hover:text-stone-600"
+                }`}
+              >
+                <TabIcon tab={t.id} active={active} />
+                <span className="flex items-center gap-1">
+                  {t.label}
+                  {t.id === "match" && selectedIds.size > 0 && (
+                    <span
+                      className={`rounded-full px-1.5 text-[10px] font-bold text-white ${
+                        active ? "bg-pitch" : "bg-stone-400"
+                      }`}
+                    >
+                      {selectedIds.size}
+                    </span>
+                  )}
                 </span>
-              )}
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </nav>
     </div>
