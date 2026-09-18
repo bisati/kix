@@ -21,11 +21,12 @@ describe("WhatsApp share text", () => {
   });
 
   it("never marks primary/secondary placements", () => {
-    expect(text).not.toContain("*\n"); // no position asterisks at line ends
     expect(text).not.toContain("secondary");
     expect(text).not.toContain("primary:");
+    // Player lines ("Name — Position") must carry no asterisk; the only
+    // legal asterisks are WhatsApp bold markers on *Team A* / *Team B*.
     for (const line of text.split("\n")) {
-      expect(line.endsWith("*")).toBe(false);
+      if (line.includes(" — ")) expect(line, line).not.toContain("*");
     }
   });
 
