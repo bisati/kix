@@ -2,7 +2,7 @@
 
 Balanced football teams for a weekly friendly game, in 30 seconds, with the fairness proof on screen.
 
-**Live at:** _deploying soon_
+**Live at:** [kix-psi.vercel.app](https://kix-psi.vercel.app)
 
 Every week the same argument: are the teams fair? This app ends it. Tap who showed up, get two teams that are balanced across positions, skill tiers, and game-controllers — and a verification panel that shows every fairness check computed from the final teams, so nobody has to take the algorithm's word for it.
 
