@@ -66,7 +66,8 @@ function TeamCard({
             Team {team.team}
           </h3>
           <span className="text-xs font-semibold text-stone-500">
-            {team.skillTotal} skill · {team.skillAvg.toFixed(1)} avg
+            ★{team.skillTotal} · avg {team.skillAvg.toFixed(1)} · ⚡
+            {team.runningTotal}
           </span>
         </div>
         <ul className="space-y-0.5">
@@ -115,8 +116,17 @@ function TeamCard({
                       🎮
                     </span>
                   )}
-                  <span className="w-7 rounded-md bg-stone-50 py-0.5 text-center text-xs font-bold text-stone-600">
-                    {r.player.skill}
+                  <span
+                    className="w-9 rounded-md bg-sky-50 py-0.5 text-center text-xs font-semibold text-sky-700"
+                    title={`running ${r.player.running}/5`}
+                  >
+                    ⚡{r.player.running}
+                  </span>
+                  <span
+                    className="w-9 rounded-md bg-stone-50 py-0.5 text-center text-xs font-bold text-stone-600"
+                    title={`skill ${r.player.skill}/5`}
+                  >
+                    ★{r.player.skill}
                   </span>
                 </button>
               </li>
