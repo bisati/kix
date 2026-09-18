@@ -3,6 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { DEMO_ROSTER } from "@/data/demo-roster";
 import { buildTeams, manualSwap, rerollTeams } from "@/lib/engine";
+import {
+  Instruction,
+  applyInstructions,
+  pruneInstructions,
+  toConstraints,
+} from "@/lib/instructions";
 import { Constraints, Player, SplitResult } from "@/lib/types";
 import Logo from "@/components/Logo";
 import RosterTab from "@/components/RosterTab";
@@ -47,7 +53,8 @@ export default function Home() {
   const [isDemo, setIsDemo] = useState(true);
   const [hydrated, setHydrated] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [constraints, setConstraints] = useState<Constraints>({
+  const [instructions, setInstructions] = useState<Instruction[]>([]);
+  const [matchConstraints, setMatchConstraints] = useState<Constraints>({
     apart: [],
     together: [],
   });
@@ -96,10 +103,7 @@ export default function Home() {
     }
     const ids = new Set(players.map((p) => p.id));
     setSelectedIds((prev) => new Set([...prev].filter((id) => ids.has(id))));
-    setConstraints((prev) => ({
-      apart: prev.apart.filter(([x, y]) => ids.has(x) && ids.has(y)),
-      together: prev.together.filter(([x, y]) => ids.has(x) && ids.has(y)),
-    }));
+    setInstructions((prev) => pruneInstructions(prev, ids));
   };
 
   const selectedPlayers = useMemo(
@@ -109,8 +113,13 @@ export default function Home() {
 
   const build = () => {
     const seed = (Date.now() % 100000) + 1;
-    setMatchPlayers(selectedPlayers);
-    setResult(buildTeams(selectedPlayers, constraints, seed));
+    // Instructions compile here: overrides/injuries transform the pool,
+    // pair instructions become engine constraints.
+    const todaysPlayers = applyInstructions(selectedPlayers, instructions);
+    const constraints = toConstraints(instructions);
+    setMatchPlayers(todaysPlayers);
+    setMatchConstraints(constraints);
+    setResult(buildTeams(todaysPlayers, constraints, seed));
     setHistory([]);
     setLastSwap(null);
     setTab("teams");
@@ -118,14 +127,14 @@ export default function Home() {
 
   const reroll = () => {
     if (!result) return;
-    setResult(rerollTeams(matchPlayers, constraints, result));
+    setResult(rerollTeams(matchPlayers, matchConstraints, result));
     setHistory([]);
     setLastSwap(null);
   };
 
   const swap = (idX: string, idY: string) => {
     if (!result) return;
-    const next = manualSwap(result, matchPlayers, constraints, idX, idY);
+    const next = manualSwap(result, matchPlayers, matchConstraints, idX, idY);
     if (next === result) return; // illegal/no-op swap
     setHistory((h) => [...h, result]);
     setLastSwap([idX, idY]);
@@ -176,8 +185,8 @@ export default function Home() {
             roster={roster}
             selectedIds={selectedIds}
             setSelectedIds={setSelectedIds}
-            constraints={constraints}
-            setConstraints={setConstraints}
+            instructions={instructions}
+            setInstructions={setInstructions}
             onBuild={build}
           />
         )}

@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Constraints, Player, Position } from "@/lib/types";
+import { Instruction, OverrideValues, Severity } from "@/lib/instructions";
+import { Player, Position, POSITIONS } from "@/lib/types";
 import { Ball } from "@/components/Logo";
 
 interface Props {
   roster: Player[];
   selectedIds: Set<string>;
   setSelectedIds: (s: Set<string>) => void;
-  constraints: Constraints;
-  setConstraints: (c: Constraints) => void;
+  instructions: Instruction[];
+  setInstructions: (i: Instruction[]) => void;
   onBuild: () => void;
 }
 
@@ -57,7 +58,6 @@ export function Avatar({ name, className = "h-8 w-8 text-[11px]" }: { name: stri
 function Hero() {
   return (
     <div className="relative h-24 overflow-hidden rounded-2xl bg-gradient-to-r from-pitch-deep via-pitch to-[#22a04f] shadow-sm sm:h-28">
-      {/* pitch markings */}
       <svg
         viewBox="0 0 400 100"
         preserveAspectRatio="none"
@@ -127,20 +127,320 @@ function PlayerRow({
   );
 }
 
+/* ---------------- Instructions ---------------- */
+
+type InstrKind = "pair" | "injury" | "override";
+
+const KIND_META: Record<InstrKind, { label: string; icon: string }> = {
+  pair: { label: "Pair", icon: "⇄" },
+  injury: { label: "Injury", icon: "🩹" },
+  override: { label: "Today's rating", icon: "✏️" },
+};
+
+function InstructionsSection({
+  selectedPlayers,
+  instructions,
+  setInstructions,
+  nameOf,
+}: {
+  selectedPlayers: Player[];
+  instructions: Instruction[];
+  setInstructions: (i: Instruction[]) => void;
+  nameOf: (id: string) => string;
+}) {
+  const [kind, setKind] = useState<InstrKind>("pair");
+  const [pinX, setPinX] = useState("");
+  const [pinY, setPinY] = useState("");
+  const [pinMode, setPinMode] = useState<"apart" | "together">("apart");
+  const [injuredId, setInjuredId] = useState("");
+  const [severity, setSeverity] = useState<Severity>("mild");
+  const [overrideId, setOverrideId] = useState("");
+  const [draft, setDraft] = useState<OverrideValues | null>(null);
+
+  const playerSelect = (
+    value: string,
+    onChange: (v: string) => void,
+    exclude?: string
+  ) => (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="min-h-[2.5rem] rounded-lg border border-stone-200 bg-white px-2 text-sm"
+    >
+      <option value="">Player…</option>
+      {selectedPlayers
+        .filter((p) => p.id !== exclude)
+        .map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+    </select>
+  );
+
+  const add = (ins: Instruction) => {
+    // One injury and one override per player: adding again replaces.
+    const rest =
+      ins.kind === "pair"
+        ? instructions
+        : instructions.filter(
+            (i) => !(i.kind === ins.kind && i.playerId === ins.playerId)
+          );
+    setInstructions([...rest, ins]);
+  };
+
+  const remove = (idx: number) =>
+    setInstructions(instructions.filter((_, i) => i !== idx));
+
+  const chooseOverridePlayer = (id: string) => {
+    setOverrideId(id);
+    const p = selectedPlayers.find((x) => x.id === id);
+    setDraft(
+      p
+        ? {
+            primary: p.primary,
+            secondary: p.secondary,
+            skill: p.skill,
+            running: p.running,
+            control: p.control,
+          }
+        : null
+    );
+  };
+
+  return (
+    <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+      <h3 className="mb-1 text-sm font-bold">Instructions</h3>
+      <p className="mb-3 text-xs text-stone-400">
+        Tell the engine about today — pairs to split or keep, knocks, one-day
+        form. Applies to this match only; your roster is untouched.
+      </p>
+
+      {/* Type selector */}
+      <div className="mb-3 inline-flex rounded-xl border border-stone-200 bg-stone-50 p-1">
+        {(Object.keys(KIND_META) as InstrKind[]).map((k) => (
+          <button
+            key={k}
+            onClick={() => setKind(k)}
+            aria-pressed={kind === k}
+            className={`min-h-[2.1rem] rounded-lg px-3 text-xs font-bold transition-colors ${
+              kind === k
+                ? "bg-white text-ink shadow-sm"
+                : "text-stone-500 hover:text-stone-700"
+            }`}
+          >
+            {KIND_META[k].icon} {KIND_META[k].label}
+          </button>
+        ))}
+      </div>
+
+      {/* Pair form */}
+      {kind === "pair" && (
+        <div className="flex flex-wrap items-center gap-2">
+          {playerSelect(pinX, setPinX)}
+          <select
+            value={pinMode}
+            onChange={(e) => setPinMode(e.target.value as "apart" | "together")}
+            className="min-h-[2.5rem] rounded-lg border border-stone-200 bg-white px-2 text-sm"
+          >
+            <option value="apart">opposite teams</option>
+            <option value="together">same team</option>
+          </select>
+          {playerSelect(pinY, setPinY, pinX)}
+          <button
+            onClick={() => {
+              if (!pinX || !pinY || pinX === pinY) return;
+              add({ kind: "pair", mode: pinMode, a: pinX, b: pinY });
+              setPinX("");
+              setPinY("");
+            }}
+            disabled={!pinX || !pinY}
+            className="min-h-[2.5rem] rounded-lg bg-ink px-4 text-sm font-semibold text-white transition-transform hover:-translate-y-px active:scale-95 disabled:opacity-30"
+          >
+            Add
+          </button>
+        </div>
+      )}
+
+      {/* Injury form */}
+      {kind === "injury" && (
+        <div className="flex flex-wrap items-center gap-2">
+          {playerSelect(injuredId, setInjuredId)}
+          <select
+            value={severity}
+            onChange={(e) => setSeverity(e.target.value as Severity)}
+            className="min-h-[2.5rem] rounded-lg border border-stone-200 bg-white px-2 text-sm"
+          >
+            <option value="mild">Mild — running −1</option>
+            <option value="serious">Serious — running −2, skill −1</option>
+          </select>
+          <button
+            onClick={() => {
+              if (!injuredId) return;
+              add({ kind: "injury", playerId: injuredId, severity });
+              setInjuredId("");
+              setSeverity("mild");
+            }}
+            disabled={!injuredId}
+            className="min-h-[2.5rem] rounded-lg bg-ink px-4 text-sm font-semibold text-white transition-transform hover:-translate-y-px active:scale-95 disabled:opacity-30"
+          >
+            Add
+          </button>
+        </div>
+      )}
+
+      {/* Today's rating form */}
+      {kind === "override" && (
+        <div className="space-y-3">
+          {playerSelect(overrideId, chooseOverridePlayer)}
+          {draft && (
+            <div className="animate-pop rounded-xl border border-violet-200 bg-violet-50/50 p-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <label className="flex flex-col gap-1 text-xs font-semibold text-stone-500">
+                  Primary
+                  <select
+                    value={draft.primary}
+                    onChange={(e) =>
+                      setDraft({ ...draft, primary: e.target.value as Position })
+                    }
+                    className="rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm font-normal text-ink"
+                  >
+                    {POSITIONS.map((p) => (
+                      <option key={p}>{p}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-semibold text-stone-500">
+                  Secondary
+                  <select
+                    value={draft.secondary}
+                    onChange={(e) =>
+                      setDraft({ ...draft, secondary: e.target.value as Position })
+                    }
+                    className="rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm font-normal text-ink"
+                  >
+                    {POSITIONS.map((p) => (
+                      <option key={p}>{p}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-semibold text-stone-500">
+                  Skill · {draft.skill}
+                  <input
+                    type="range"
+                    min={1}
+                    max={5}
+                    value={draft.skill}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        skill: +e.target.value as Player["skill"],
+                      })
+                    }
+                    className="accent-violet-600"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-semibold text-stone-500">
+                  Running · {draft.running}
+                  <input
+                    type="range"
+                    min={1}
+                    max={5}
+                    value={draft.running}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        running: +e.target.value as Player["running"],
+                      })
+                    }
+                    className="accent-violet-600"
+                  />
+                </label>
+                <label className="col-span-2 flex items-center gap-2 text-xs font-semibold text-stone-600">
+                  <input
+                    type="checkbox"
+                    checked={draft.control}
+                    onChange={(e) =>
+                      setDraft({ ...draft, control: e.target.checked })
+                    }
+                    className="h-4 w-4 accent-violet-600"
+                  />
+                  Game controller 🎮 today
+                </label>
+              </div>
+              <button
+                onClick={() => {
+                  if (!overrideId || !draft) return;
+                  add({ kind: "override", playerId: overrideId, values: draft });
+                  setOverrideId("");
+                  setDraft(null);
+                }}
+                className="mt-3 min-h-[2.4rem] rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white transition-transform hover:-translate-y-px active:scale-95"
+              >
+                Set for today
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Active instructions */}
+      {instructions.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {instructions.map((ins, i) => {
+            let cls = "";
+            let text = "";
+            if (ins.kind === "pair") {
+              cls =
+                ins.mode === "apart"
+                  ? "bg-rose-50 text-rose-700 ring-rose-200"
+                  : "bg-teamb-soft text-teamb-deep ring-indigo-200";
+              text = `⇄ ${nameOf(ins.a)} ${ins.mode === "apart" ? "vs" : "+"} ${nameOf(ins.b)}`;
+            } else if (ins.kind === "injury") {
+              cls = "bg-amber-50 text-amber-800 ring-amber-200";
+              text = `🩹 ${nameOf(ins.playerId)} — ${
+                ins.severity === "mild" ? "mild (run −1)" : "serious (run −2, skill −1)"
+              }`;
+            } else {
+              cls = "bg-violet-50 text-violet-800 ring-violet-200";
+              const v = ins.values;
+              text = `✏️ ${nameOf(ins.playerId)} today: ${POS_SHORT[v.primary]} · skill ${v.skill} · run ${v.running}${v.control ? " · 🎮" : ""}`;
+            }
+            return (
+              <span
+                key={i}
+                className={`animate-pop inline-flex items-center gap-1.5 rounded-full py-1 pl-3 pr-1.5 text-xs font-semibold ring-1 ${cls}`}
+              >
+                {text}
+                <button
+                  onClick={() => remove(i)}
+                  aria-label="remove instruction"
+                  className="grid h-5 w-5 place-items-center rounded-full hover:bg-black/10"
+                >
+                  ×
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* ---------------- Tab ---------------- */
+
 export default function MatchDayTab({
   roster,
   selectedIds,
   setSelectedIds,
-  constraints,
-  setConstraints,
+  instructions,
+  setInstructions,
   onBuild,
 }: Props) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
-  const [pinX, setPinX] = useState("");
-  const [pinY, setPinY] = useState("");
-  const [pinKind, setPinKind] = useState<"apart" | "together">("apart");
 
   useEffect(() => {
     if (!open) return;
@@ -170,21 +470,6 @@ export default function MatchDayTab({
   const available = roster.filter(
     (p) => !selectedIds.has(p.id) && p.name.toLowerCase().includes(q)
   );
-
-  const addPin = () => {
-    if (!pinX || !pinY || pinX === pinY) return;
-    const pair: [string, string] = [pinX, pinY];
-    setConstraints({ ...constraints, [pinKind]: [...constraints[pinKind], pair] });
-    setPinX("");
-    setPinY("");
-  };
-
-  const removePin = (kind: "apart" | "together", idx: number) => {
-    setConstraints({
-      ...constraints,
-      [kind]: constraints[kind].filter((_, i) => i !== idx),
-    });
-  };
 
   const nameOf = (id: string) => roster.find((p) => p.id === id)?.name ?? id;
   const ready = selectedIds.size >= 4;
@@ -334,89 +619,12 @@ export default function MatchDayTab({
         )}
       </section>
 
-      <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-        <h3 className="mb-1 text-sm font-bold">Pins</h3>
-        <p className="mb-3 text-xs text-stone-400">
-          Force a pair apart or together — pins outrank every balance rule.
-        </p>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <select
-            value={pinX}
-            onChange={(e) => setPinX(e.target.value)}
-            className="min-h-[2.5rem] rounded-lg border border-stone-200 bg-white px-2"
-          >
-            <option value="">Player…</option>
-            {selectedPlayers.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={pinKind}
-            onChange={(e) => setPinKind(e.target.value as "apart" | "together")}
-            className="min-h-[2.5rem] rounded-lg border border-stone-200 bg-white px-2"
-          >
-            <option value="apart">vs</option>
-            <option value="together">with</option>
-          </select>
-          <select
-            value={pinY}
-            onChange={(e) => setPinY(e.target.value)}
-            className="min-h-[2.5rem] rounded-lg border border-stone-200 bg-white px-2"
-          >
-            <option value="">Player…</option>
-            {selectedPlayers
-              .filter((p) => p.id !== pinX)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-          </select>
-          <button
-            onClick={addPin}
-            disabled={!pinX || !pinY}
-            className="min-h-[2.5rem] rounded-lg bg-ink px-4 font-semibold text-white transition-transform hover:-translate-y-px active:scale-95 disabled:opacity-30"
-          >
-            Pin it
-          </button>
-        </div>
-        {(constraints.apart.length > 0 || constraints.together.length > 0) && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {constraints.apart.map(([x, y], i) => (
-              <span
-                key={`a${i}`}
-                className="animate-pop inline-flex items-center gap-1.5 rounded-full bg-rose-50 py-1 pl-3 pr-1.5 text-xs font-semibold text-rose-700 ring-1 ring-rose-200"
-              >
-                {nameOf(x)} vs {nameOf(y)}
-                <button
-                  onClick={() => removePin("apart", i)}
-                  aria-label="remove pin"
-                  className="grid h-5 w-5 place-items-center rounded-full hover:bg-rose-100"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-            {constraints.together.map(([x, y], i) => (
-              <span
-                key={`t${i}`}
-                className="animate-pop inline-flex items-center gap-1.5 rounded-full bg-teamb-soft py-1 pl-3 pr-1.5 text-xs font-semibold text-teamb-deep ring-1 ring-indigo-200"
-              >
-                {nameOf(x)} + {nameOf(y)}
-                <button
-                  onClick={() => removePin("together", i)}
-                  aria-label="remove pin"
-                  className="grid h-5 w-5 place-items-center rounded-full hover:bg-indigo-100"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-      </section>
+      <InstructionsSection
+        selectedPlayers={selectedPlayers}
+        instructions={instructions}
+        setInstructions={setInstructions}
+        nameOf={nameOf}
+      />
 
       {/* Sticky build CTA, docked above the tab bar in thumb reach */}
       <div
