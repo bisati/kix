@@ -95,6 +95,69 @@ describe("position balance (rung 3)", () => {
   });
 });
 
+describe("keepers — each goal filled whenever the squad allows", () => {
+  const outfield = (
+    id: string,
+    primary: Player["primary"],
+    secondary: Player["secondary"],
+    skill: Player["skill"]
+  ): Player => ({
+    id, name: id, primary, secondary, skill, running: 3,
+    control: false, ageBand: "26-30",
+  });
+
+  /** Reported 2026-09-18: nobody keeps for a living, two deputies available. */
+  const DEPUTIES: Player[] = [
+    outfield("Arun", "Defence", "GK", 3),
+    outfield("Bilal", "Defence", "GK", 3),
+    outfield("Chirag", "Defence", "Midfield", 4),
+    outfield("Deepak", "Full-back", "Defence", 3),
+    outfield("Farid", "Full-back", "Defence", 3),
+    outfield("Gaurav", "Full-back", "Winger", 1),
+    outfield("Imran", "Midfield", "Winger", 4),
+    outfield("Karthik", "Midfield", "Defence", 3),
+    outfield("Lokesh", "Midfield", "Striker", 5),
+    outfield("Naveen", "Winger", "Striker", 3),
+    outfield("Pritam", "Striker", "Winger", 3),
+    outfield("Ravi", "Striker", "Midfield", 4),
+  ];
+
+  it("no specialist keeper but two deputies: both goals are filled", () => {
+    for (const seed of [1, 4, 17, 33]) {
+      const result = buildTeams(DEPUTIES, NO_CONSTRAINTS, seed);
+      const s = statsOf(result, DEPUTIES);
+      expect(s.A.posCount.GK, `seed ${seed} team A`).toBeGreaterThanOrEqual(1);
+      expect(s.B.posCount.GK, `seed ${seed} team B`).toBeGreaterThanOrEqual(1);
+      expect(result.checks.find((c) => c.id === "keepers")?.pass).toBe(true);
+      expect(result.flags.join(" ")).not.toContain("no keeper");
+    }
+  });
+
+  it("a lone deputy is never forced into goal — both teams rotate instead", () => {
+    const players = [
+      outfield("OnlyKeeper", "Defence", "GK", 3),
+      ...DEPUTIES.slice(2, 8),
+    ];
+    const result = buildTeams(players, NO_CONSTRAINTS, 6);
+    const s = statsOf(result, players);
+    expect(s.A.posCount.GK + s.B.posCount.GK).toBe(0);
+    const check = result.checks.find((c) => c.id === "keepers");
+    expect(check?.pass).toBe(true);
+    expect(check?.detail).toContain("rotate");
+  });
+
+  it("two specialist keepers still take one goal each", () => {
+    const players = pick([
+      "Sanjay", "Omar", "Vikram", "Dev", "Arjun", "Rohan", "Ishan", "Farhan",
+    ]);
+    const result = buildTeams(players, NO_CONSTRAINTS, 2);
+    const s = statsOf(result, players);
+    expect(s.A.posCount.GK).toBe(1);
+    expect(s.B.posCount.GK).toBe(1);
+    expect(result.checks.find((c) => c.id === "keepers")?.pass).toBe(true);
+  });
+});
+
 describe("skill balance (rung 4)", () => {
   it("v1.1 regression: every skill tier splits with gap ≤ 1 — two 5s means one per team", () => {
     const result = buildTeams(DEMO_ROSTER, NO_CONSTRAINTS, 13);

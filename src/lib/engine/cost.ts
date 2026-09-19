@@ -175,9 +175,13 @@ export function costVector(
     );
   }
 
-  // Football shape: each team fields >=1 Defence and >=1 Midfield whenever the pool allows.
+  // Football shape: each team fields a keeper, >=1 Defence and >=1 Midfield
+  // whenever the pool allows. A keeper counts here and not among the mobility
+  // tiebreaks because an empty goal changes the game, not the margins — and
+  // "allows" means two people who can keep, by primary OR secondary, so a
+  // squad with no specialist still gets both goals filled by its deputies.
   let shape = 0;
-  for (const pos of ["Defence", "Midfield"] as Position[]) {
+  for (const pos of ["GK", "Defence", "Midfield"] as Position[]) {
     if (poolFor(pos, players) >= 2) {
       if (s.A.posCount[pos] === 0) shape++;
       if (s.B.posCount[pos] === 0) shape++;

@@ -101,6 +101,38 @@ export function buildChecks(
       .join(" · "),
   });
 
+  // 2b. Keepers. "Possible" means two players who can keep at all, by primary
+  // or secondary — the same bar the shape rung uses, so the check never asks
+  // for a keeper the squad cannot produce.
+  const canKeep = players.filter(
+    (p) => p.primary === "GK" || p.secondary === "GK"
+  );
+  const keeperNames = (team: "A" | "B") =>
+    assignments
+      .filter((a) => a.team === team && a.position === "GK")
+      .map((a) => byId.get(a.playerId)?.name)
+      .filter(Boolean)
+      .join(", ");
+  const namesA = keeperNames("A");
+  const namesB = keeperNames("B");
+  const bothKeep = s.A.posCount.GK >= 1 && s.B.posCount.GK >= 1;
+  checks.push({
+    id: "keepers",
+    label: "Both goals have a keeper",
+    pass: bothKeep || canKeep.length < 2,
+    detail: bothKeep
+      ? `${namesA} (A) · ${namesB} (B)`
+      : canKeep.length < 2
+      ? `${
+          canKeep.length === 1
+            ? `only ${canKeep[0].name} can keep`
+            : "nobody here keeps"
+        } — teams rotate in goal`
+      : `${namesA ? "Team B" : "Team A"} has an empty goal, though ${
+          canKeep.length
+        } players here can keep`,
+  });
+
   // 3. Skill totals within 2 — or at this pool's tier-forced minimum.
   const feas = poolFeasibility(players);
   const gap = Math.abs(s.A.skillTotal - s.B.skillTotal);

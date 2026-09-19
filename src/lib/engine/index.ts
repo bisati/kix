@@ -65,6 +65,18 @@ function seedAssignments(
     if (donor) {
       place(donor, "B", "GK");
     }
+  } else {
+    // No specialist at all. Two deputies means both goals can be filled, so
+    // fill them — a squad where nobody keeps for a living still gets a proper
+    // game. With only one deputy we leave the goal empty rather than strand a
+    // single team's outfielder in it: both sides rotate, and it's flagged.
+    const deputies = players
+      .filter((p) => p.secondary === "GK")
+      .sort(bySkillDesc);
+    if (deputies.length >= 2) {
+      place(deputies[0], "A", "GK");
+      place(deputies[1], "B", "GK");
+    }
   }
 
   // --- Snake draft the rest, primary positions, snake continuing across groups ---
