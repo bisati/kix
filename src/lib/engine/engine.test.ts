@@ -133,17 +133,42 @@ describe("keepers — each goal filled whenever the squad allows", () => {
     }
   });
 
-  it("a lone deputy is never forced into goal — both teams rotate instead", () => {
+  it("a lone deputy still keeps — one goal filled, the other team rotates", () => {
     const players = [
       outfield("OnlyKeeper", "Defence", "GK", 3),
       ...DEPUTIES.slice(2, 8),
     ];
-    const result = buildTeams(players, NO_CONSTRAINTS, 6);
+    for (const seed of [2, 6, 21]) {
+      const result = buildTeams(players, NO_CONSTRAINTS, seed);
+      const s = statsOf(result, players);
+      expect(s.A.posCount.GK + s.B.posCount.GK, `seed ${seed}`).toBe(1);
+      const keeper = result.assignments.find((a) => a.position === "GK");
+      expect(keeper?.playerId).toBe("OnlyKeeper");
+      const check = result.checks.find((c) => c.id === "keepers");
+      expect(check?.pass).toBe(true);
+      expect(check?.detail).toContain("rotates in goal");
+    }
+  });
+
+  it("a lone specialist keeps too, and the other team rotates", () => {
+    const players = [
+      { ...outfield("Sanjay", "GK", "GK", 3) },
+      ...DEPUTIES.slice(2, 8),
+    ];
+    const result = buildTeams(players, NO_CONSTRAINTS, 4);
+    const s = statsOf(result, players);
+    expect(s.A.posCount.GK + s.B.posCount.GK).toBe(1);
+    expect(result.checks.find((c) => c.id === "keepers")?.pass).toBe(true);
+  });
+
+  it("nobody able: both goals stay empty and the check says so", () => {
+    const players = DEPUTIES.slice(2, 10);
+    const result = buildTeams(players, NO_CONSTRAINTS, 5);
     const s = statsOf(result, players);
     expect(s.A.posCount.GK + s.B.posCount.GK).toBe(0);
     const check = result.checks.find((c) => c.id === "keepers");
     expect(check?.pass).toBe(true);
-    expect(check?.detail).toContain("rotate");
+    expect(check?.detail).toContain("nobody here keeps");
   });
 
   it("two specialist keepers still take one goal each", () => {

@@ -115,22 +115,24 @@ export function buildChecks(
       .join(", ");
   const namesA = keeperNames("A");
   const namesB = keeperNames("B");
-  const bothKeep = s.A.posCount.GK >= 1 && s.B.posCount.GK >= 1;
+  const goalsFilled =
+    (s.A.posCount.GK > 0 ? 1 : 0) + (s.B.posCount.GK > 0 ? 1 : 0);
+  const goalsWanted = Math.min(2, canKeep.length);
+  const lone = namesA || namesB;
   checks.push({
     id: "keepers",
-    label: "Both goals have a keeper",
-    pass: bothKeep || canKeep.length < 2,
-    detail: bothKeep
-      ? `${namesA} (A) · ${namesB} (B)`
-      : canKeep.length < 2
-      ? `${
-          canKeep.length === 1
-            ? `only ${canKeep[0].name} can keep`
-            : "nobody here keeps"
-        } — teams rotate in goal`
-      : `${namesA ? "Team B" : "Team A"} has an empty goal, though ${
-          canKeep.length
-        } players here can keep`,
+    label: "Every available keeper is in goal",
+    pass: goalsFilled >= goalsWanted,
+    detail:
+      goalsWanted === 0
+        ? "nobody here keeps — both teams rotate in goal"
+        : goalsFilled < goalsWanted
+        ? `${goalsFilled} of ${goalsWanted} goals filled, though ${canKeep.length} here can keep`
+        : goalsWanted === 1
+        ? `${lone} keeps for Team ${namesA ? "A" : "B"} — Team ${
+            namesA ? "B" : "A"
+          } rotates in goal`
+        : `${namesA} (A) · ${namesB} (B)`,
   });
 
   // 3. Skill totals within 2 — or at this pool's tier-forced minimum.

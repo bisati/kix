@@ -175,13 +175,21 @@ export function costVector(
     );
   }
 
-  // Football shape: each team fields a keeper, >=1 Defence and >=1 Midfield
-  // whenever the pool allows. A keeper counts here and not among the mobility
-  // tiebreaks because an empty goal changes the game, not the margins — and
-  // "allows" means two people who can keep, by primary OR secondary, so a
-  // squad with no specialist still gets both goals filled by its deputies.
+  // Keepers — "GK is scarce, settle it first". Fill as many goals as the
+  // squad can supply, capped at one each: two able keepers means both goals,
+  // one means that player keeps while the other team rotates, none means both
+  // rotate. Able counts primary OR secondary, so deputies keep when no
+  // specialist turns up. This is its own rung rather than part of `shape`
+  // below because bundling made an empty goal cost exactly as much as a
+  // missing midfielder, and the engine then traded them arbitrarily.
+  const ableKeepers = poolFor("GK", players);
+  const goalsFilled =
+    (s.A.posCount.GK > 0 ? 1 : 0) + (s.B.posCount.GK > 0 ? 1 : 0);
+  const keeperShortfall = Math.max(0, Math.min(2, ableKeepers) - goalsFilled);
+
+  // Football shape: each team fields >=1 Defence and >=1 Midfield whenever the pool allows.
   let shape = 0;
-  for (const pos of ["GK", "Defence", "Midfield"] as Position[]) {
+  for (const pos of ["Defence", "Midfield"] as Position[]) {
     if (poolFor(pos, players) >= 2) {
       if (s.A.posCount[pos] === 0) shape++;
       if (s.B.posCount[pos] === 0) shape++;
@@ -249,6 +257,7 @@ export function costVector(
     constraintViolations,
     headcount,
     posImbalance,
+    keeperShortfall, // settle the goal before the rest of the shape
     shape,
     secondarySpread,
     ...tierViolations, // hard for ALL headcounts — quality can never be hoarded

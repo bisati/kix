@@ -66,16 +66,18 @@ function seedAssignments(
       place(donor, "B", "GK");
     }
   } else {
-    // No specialist at all. Two deputies means both goals can be filled, so
-    // fill them — a squad where nobody keeps for a living still gets a proper
-    // game. With only one deputy we leave the goal empty rather than strand a
-    // single team's outfielder in it: both sides rotate, and it's flagged.
+    // No specialist at all. Every deputy we have goes in goal, up to one per
+    // team: two means both goals are covered, one means that deputy keeps and
+    // the other team rotates. A kept goal beats an empty one even when the
+    // keeper would rather be playing out.
     const deputies = players
       .filter((p) => p.secondary === "GK")
       .sort(bySkillDesc);
     if (deputies.length >= 2) {
       place(deputies[0], "A", "GK");
       place(deputies[1], "B", "GK");
+    } else if (deputies.length === 1) {
+      place(deputies[0], "A", "GK");
     }
   }
 
