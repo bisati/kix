@@ -3,8 +3,9 @@
 import { useRef, useState } from "react";
 import { DEMO_ROSTER } from "@/data/demo-roster";
 import { parseRosterCsv, serializeRosterCsv } from "@/lib/csv";
-import { Player, Position, POSITIONS } from "@/lib/types";
+import { POS_SHORT, Player, Position, POSITIONS } from "@/lib/types";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { RunBadge, SkillBadge } from "@/components/Icons";
 
 interface Props {
   roster: Player[];
@@ -265,46 +266,76 @@ export default function RosterTab({ roster, isDemo, onChange }: Props) {
         </div>
       )}
 
-      <div className="space-y-4">
+      {/* Two columns on wide screens: a 50-player roster scrolls half as far,
+          and each row is narrow enough that the name and its ratings stay in
+          one glance instead of either end of the viewport. */}
+      <div className="lg:columns-2 lg:gap-4">
         {POSITIONS.map((pos) => {
           const group = roster.filter((p) => p.primary === pos);
           if (group.length === 0) return null;
           return (
-            <div key={pos}>
-              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                {pos} · {group.length}
+            <div key={pos} className="mb-4 break-inside-avoid">
+              <p className="mb-1.5 flex items-baseline gap-1.5 text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                {pos}
+                <span className="rounded bg-stone-100 px-1.5 py-px tabular-nums text-stone-500">
+                  {group.length}
+                </span>
               </p>
-              <ul className="divide-y divide-stone-100 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+              <ul className="divide-y divide-stone-200/70 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
                 {group.map((p) => (
-                  <li key={p.id} className="flex items-center gap-3 px-3.5 py-2.5 text-sm">
+                  <li
+                    key={p.id}
+                    className="group flex items-center gap-2.5 px-3 py-2 text-sm transition-colors hover:bg-stone-50/80"
+                  >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">
-                        {p.name}{" "}
+                      <p className="flex items-center gap-1.5 truncate font-semibold leading-tight">
+                        {p.name}
                         {p.control && (
-                          <span className="text-xs" title="game controller">
+                          <span className="text-[11px]" title="runs the game">
                             🎮
                           </span>
                         )}
                       </p>
-                      <p className="truncate text-xs text-stone-400">
-                        {p.secondary !== p.primary && `also ${p.secondary} · `}
-                        skill {p.skill} · run {p.running} · {p.ageBand}
+                      <p className="mt-0.5 flex items-center gap-1.5 text-[11px] leading-tight text-stone-500">
+                        {p.secondary !== p.primary && (
+                          <span
+                            className={`rounded px-1 py-px font-bold ${
+                              p.secondary === "GK"
+                                ? "bg-amber-50 text-amber-700"
+                                : "bg-stone-100 text-stone-500"
+                            }`}
+                            title={
+                              p.secondary === "GK"
+                                ? "can go in goal"
+                                : `also plays ${p.secondary}`
+                            }
+                          >
+                            {POS_SHORT[p.secondary]}
+                          </span>
+                        )}
+                        <span className="tabular-nums">{p.ageBand}</span>
                       </p>
                     </div>
-                    <button
-                      onClick={() => startEdit(p)}
-                      className="rounded-lg px-2 py-1 text-xs font-semibold text-stone-500 hover:bg-stone-100"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() =>
-                        onChange(roster.filter((x) => x.id !== p.id), false)
-                      }
-                      className="rounded-lg px-2 py-1 text-xs font-semibold text-rose-400 hover:bg-rose-50"
-                    >
-                      Remove
-                    </button>
+                    <SkillBadge value={p.skill} />
+                    <RunBadge value={p.running} />
+                    <div className="flex shrink-0 items-center">
+                      <button
+                        onClick={() => startEdit(p)}
+                        className="rounded-lg px-2 py-1 text-xs font-semibold text-stone-400 transition-colors hover:bg-stone-100 hover:text-ink"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() =>
+                          onChange(roster.filter((x) => x.id !== p.id), false)
+                        }
+                        aria-label={`remove ${p.name}`}
+                        title={`remove ${p.name}`}
+                        className="grid h-7 w-7 place-items-center rounded-lg text-base leading-none text-stone-300 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

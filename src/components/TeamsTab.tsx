@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { toShareText } from "@/lib/format";
-import { Player, SplitResult, TeamView } from "@/lib/types";
+import { POS_SHORT, Player, SplitResult, TeamView } from "@/lib/types";
 import { Ball } from "@/components/Logo";
 import { initials } from "@/components/MatchDayTab";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { Bolt, RunBadge, SkillBadge, Star } from "@/components/Icons";
 
 interface Props {
   result: SplitResult | null;
@@ -17,15 +18,6 @@ interface Props {
   onSwap: (idX: string, idY: string) => void;
   onGoPick: () => void;
 }
-
-const POS_SHORT: Record<string, string> = {
-  GK: "GK",
-  Defence: "DEF",
-  "Full-back": "FB",
-  Midfield: "MID",
-  Winger: "WNG",
-  Striker: "ST",
-};
 
 /* Kit colors: Team A plays in white, Team B in red. The kit name appears in
    text beside every colored mark, so identity is never color-alone — and the
@@ -42,43 +34,6 @@ const TEAM_META = {
     chip: "bg-teamb text-white",
   },
 } as const;
-
-/**
- * Chunky five-point star. The rounded stroke is painted in the same color as
- * the fill, which fattens the arms and softens every join — that's what gives
- * it the solid look the ★ text glyph can't (it also renders identically on
- * every platform, unlike the glyph).
- */
-function Star({ className = "h-3 w-3" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
-      <path
-        d="M12 3.4 14.35 8.76 20.18 9.34 15.8 13.24 17.06 18.96 12 16 6.94 18.96 8.2 13.24 3.82 9.34 9.65 8.76Z"
-        fill="currentColor"
-        stroke="currentColor"
-        strokeWidth="2.6"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-/** Lightning bolt, drawn with the same rounded-stroke trick as the star. */
-function Bolt({ className = "h-3 w-3" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
-      <path
-        d="M14.2 2.4 5.2 13.6 10.4 13.6 9.4 21.6 18.6 10.2 13.2 10.2Z"
-        fill="currentColor"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 /* ---------------- List view ---------------- */
 
@@ -171,20 +126,8 @@ function TeamCard({
                     </span>
                   )}
                   {/* Skill is the headline rating, so it leads; running trails. */}
-                  <span
-                    className="inline-flex w-9 shrink-0 items-center justify-center gap-0.5 rounded-md bg-pitch-soft py-0.5 text-xs font-bold text-pitch-deep"
-                    title={`skill ${r.player.skill}/5`}
-                  >
-                    <Star className="h-3 w-3" />
-                    {r.player.skill}
-                  </span>
-                  <span
-                    className="inline-flex w-9 shrink-0 items-center justify-center gap-0.5 rounded-md bg-sky-50 py-0.5 text-xs font-semibold text-sky-700"
-                    title={`running ${r.player.running}/5`}
-                  >
-                    <Bolt className="h-3 w-3" />
-                    {r.player.running}
-                  </span>
+                  <SkillBadge value={r.player.skill} />
+                  <RunBadge value={r.player.running} />
                 </button>
               </li>
             );

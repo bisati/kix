@@ -9,6 +9,16 @@ export const POSITIONS = [
 
 export type Position = (typeof POSITIONS)[number];
 
+/** Short labels for badges and team sheets. */
+export const POS_SHORT: Record<Position, string> = {
+  GK: "GK",
+  Defence: "DEF",
+  "Full-back": "FB",
+  Midfield: "MID",
+  Winger: "WNG",
+  Striker: "ST",
+};
+
 export interface Player {
   id: string;
   name: string;

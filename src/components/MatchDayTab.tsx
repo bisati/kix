@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Instruction, OverrideValues, Severity } from "@/lib/instructions";
-import { Player, Position, POSITIONS } from "@/lib/types";
+import { POS_SHORT, Player, Position, POSITIONS } from "@/lib/types";
 import { Ball } from "@/components/Logo";
 
 interface Props {
@@ -13,15 +13,6 @@ interface Props {
   setInstructions: (i: Instruction[]) => void;
   onBuild: () => void;
 }
-
-const POS_SHORT: Record<Position, string> = {
-  GK: "GK",
-  Defence: "DEF",
-  "Full-back": "FB",
-  Midfield: "MID",
-  Winger: "WNG",
-  Striker: "ST",
-};
 
 /* Deterministic pastel avatar per player. */
 const AVATAR_STYLES = [
