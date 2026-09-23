@@ -106,7 +106,7 @@ describe("keepers — each goal filled whenever the squad allows", () => {
     control: false, ageBand: "26-30",
   });
 
-  /** Reported 2026-09-18: nobody keeps for a living, two deputies available. */
+  /** The reported case: nobody keeps for a living, two deputies available. */
   const DEPUTIES: Player[] = [
     outfield("Arun", "Defence", "GK", 3),
     outfield("Bilal", "Defence", "GK", 3),
