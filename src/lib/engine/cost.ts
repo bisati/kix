@@ -91,7 +91,7 @@ export interface PoolFeasibility {
 /**
  * What this pool's tier structure allows, independent of any split. Tier
  * caps (±1) are hard for every headcount, so per-team totals are fully
- * determined by which side each odd tier's extra lands on — enumerating
+ * determined by which side each odd tier's extra lands on, so enumerating
  * those ≤ 2^5 assignments gives exact bounds. Checks use this to grade the
  * engine against what is achievable, never against impossible arithmetic.
  */
@@ -175,7 +175,7 @@ export function costVector(
     );
   }
 
-  // Keepers — "GK is scarce, settle it first". Fill as many goals as the
+  // Keepers. "GK is scarce, settle it first": fill as many goals as the
   // squad can supply, capped at one each: two able keepers means both goals,
   // one means that player keeps while the other team rotates, none means both
   // rotate. Able counts primary OR secondary, so deputies keep when no
@@ -218,11 +218,11 @@ export function costVector(
   const totalGap = Math.abs(s.A.skillTotal - s.B.skillTotal);
   const totalExcess = Math.max(0, totalGap - 2);
 
-  // Odd headcount — "pricing the extra man". Tier caps stay hard (the terms
+  // Odd headcount, "pricing the extra man". Tier caps stay hard (the terms
   // above); compensation happens only in the margins inside them:
   //   oddTierLean:  each tier's odd extra should sit with the BIGGER team
   //                 when it's a low tier, i.e. the ceil-side-on-big penalty
-  //                 is the tier's value — so quality extras lean man-down.
+  //                 is the tier's value, so quality extras lean man-down.
   //   passengerLean/runHeadLean: the man-down team gets the legs; slow
   //                 players hide where there's cover.
   //   gkStructural: a lone fixed keeper belongs to the short side; the
@@ -238,7 +238,7 @@ export function costVector(
       if (big.tierCount[tier] > small.tierCount[tier]) oddTierLean += tier;
     }
     // Absolute, not relative: every slow pair of legs on the man-down side
-    // costs — passengers hide on the bigger team where there's cover.
+    // costs. Passengers hide on the bigger team where there's cover.
     passengerLean = small.lowRunners;
     runHeadLean = Math.max(
       0,
@@ -260,7 +260,7 @@ export function costVector(
     keeperShortfall, // settle the goal before the rest of the shape
     shape,
     secondarySpread,
-    ...tierViolations, // hard for ALL headcounts — quality can never be hoarded
+    ...tierViolations, // hard for ALL headcounts: quality can never be hoarded
     controllerGap,
     midControllerGap,
     midSkillExcess,

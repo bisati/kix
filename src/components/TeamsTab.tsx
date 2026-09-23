@@ -20,7 +20,7 @@ interface Props {
 }
 
 /* Kit colors: Team A plays in white, Team B in red. The kit name appears in
-   text beside every colored mark, so identity is never color-alone — and the
+   text beside every colored mark, so identity is never color-alone, and the
    white kit always wears a stone outline to stay visible on white cards. */
 const TEAM_META = {
   A: {
@@ -162,7 +162,7 @@ function fieldLines(team: TeamView) {
   return [gk, back, mid, front].filter((line) => line.length > 0);
 }
 
-/** Kit shirt with the player's initials on the chest — white for A, red for B. */
+/** Kit shirt with the player's initials on the chest: white for A, red for B. */
 function Jersey({
   name,
   team,
@@ -237,7 +237,7 @@ function FieldDot({
       className={`flex w-14 flex-col items-center ${
         swapArmed ? "cursor-pointer" : ""
       }`}
-      title={`${p.name} — ${row.position}${row.isSecondary ? " (secondary)" : ""}`}
+      title={`${p.name} · ${row.position}${row.isSecondary ? " (secondary)" : ""}`}
     >
       <span className="relative">
         <Jersey
@@ -443,7 +443,7 @@ function SwapImpact({
 
       {changed.length === 0 && flipped.length === 0 ? (
         <p className="text-xs font-medium text-amber-800">
-          Perfectly even trade — no balance metric moved.
+          Perfectly even trade. No balance metric moved.
         </p>
       ) : (
         <div className="space-y-1.5">
@@ -673,7 +673,7 @@ export default function TeamsTab({
         </div>
         {swapMode && (
           <p className="animate-rise -mt-2 text-center text-xs font-medium text-amber-700">
-            Swap mode: tap one player from each team — works in both views.
+            Swap mode: tap one player from each team. Works in both views.
           </p>
         )}
       </div>
@@ -763,7 +763,7 @@ export default function TeamsTab({
       <ConfirmDialog
         open={confirmReroll}
         title="Re-roll the teams?"
-        body="Kix builds a fresh split from the same squad. Today's teams — and any swaps you've made — are replaced, and this arrangement can't be brought back."
+        body="Kix builds a fresh split from the same squad. Today's teams are replaced, along with any swaps you've made, and this arrangement can't be brought back."
         confirmLabel="Re-roll teams"
         tone="neutral"
         onConfirm={() => {

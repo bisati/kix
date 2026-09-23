@@ -48,7 +48,7 @@ export function Avatar({ name, className = "h-8 w-8 text-[11px]" }: { name: stri
 
 /*
  * Every layer keeps its own aspect ratio (fixed height, w-auto, cropped by
- * the card) — nothing stretches at any viewport width. The stripes tile,
+ * the card), so nothing stretches at any viewport width. The stripes tile,
  * the goal mouth anchors left, the center circle sits behind the ball, and
  * a tactics doodle fills the desktop middle.
  */
@@ -88,7 +88,7 @@ function Hero() {
         <line x1="80" y1="0" x2="80" y2="160" />
         <circle cx="80" cy="80" r="52" />
       </svg>
-      {/* desktop middle: chalkboard doodle — X makes the run over to O */}
+      {/* desktop middle: chalkboard doodle, X makes the run over to O */}
       <svg
         viewBox="0 0 220 100"
         className="absolute right-32 top-1/2 hidden h-full w-auto -translate-y-1/2 opacity-30 md:block"
@@ -111,7 +111,7 @@ function Hero() {
             Match day
           </h2>
           <p className="text-xs font-medium text-green-100 sm:text-sm">
-            Pick your squad — Kix does the rest.
+            Pick your squad. Kix does the rest.
           </p>
         </div>
         <span className="rotate-12 drop-shadow-md">
@@ -245,7 +245,7 @@ function InstructionsSection({
     <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
       <h3 className="mb-1 text-sm font-bold">Instructions</h3>
       <p className="mb-3 text-xs text-stone-400">
-        Tell the engine about today — pairs to split or keep, knocks, one-day
+        Tell the engine about today: pairs to split or keep, knocks, one-day
         form. Applies to this match only; your roster is untouched.
       </p>
 
@@ -304,8 +304,8 @@ function InstructionsSection({
             onChange={(e) => setSeverity(e.target.value as Severity)}
             className="min-h-[2.5rem] rounded-lg border border-stone-200 bg-white px-2 text-sm"
           >
-            <option value="mild">Mild — running −1</option>
-            <option value="serious">Serious — running −2, skill −1</option>
+            <option value="mild">Mild: running −1</option>
+            <option value="serious">Serious: running −2, skill −1</option>
           </select>
           <button
             onClick={() => {
@@ -431,7 +431,7 @@ function InstructionsSection({
               text = `⇄ ${nameOf(ins.a)} ${ins.mode === "apart" ? "vs" : "+"} ${nameOf(ins.b)}`;
             } else if (ins.kind === "injury") {
               cls = "bg-amber-50 text-amber-800 ring-amber-200";
-              text = `🩹 ${nameOf(ins.playerId)} — ${
+              text = `🩹 ${nameOf(ins.playerId)}: ${
                 ins.severity === "mild" ? "mild (run −1)" : "serious (run −2, skill −1)"
               }`;
             } else {
@@ -625,7 +625,7 @@ export default function MatchDayTab({
           )}
         </div>
 
-        {/* Squad summary on the page — compact, removable */}
+        {/* Squad summary on the page: compact, removable */}
         {selectedPlayers.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {selectedPlayers.map((p) => (

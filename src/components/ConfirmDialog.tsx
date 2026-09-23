@@ -15,7 +15,7 @@ interface Props {
 
 /**
  * Native <dialog> in modal mode: real focus trap, Escape to dismiss, and
- * top-layer rendering — none of which a hand-rolled div gives you. Cancel is
+ * top-layer rendering, none of which a hand-rolled div gives you. Cancel is
  * first in the DOM so it takes autofocus; confirming is always deliberate.
  */
 export default function ConfirmDialog({
@@ -45,7 +45,7 @@ export default function ConfirmDialog({
         e.preventDefault();
         onCancel();
       }}
-      // Clicks landing on the dialog itself are backdrop clicks — the card
+      // Clicks landing on the dialog itself are backdrop clicks. The card
       // below stops propagation.
       onClick={(e) => {
         if (e.target === ref.current) onCancel();

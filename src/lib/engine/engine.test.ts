@@ -95,7 +95,7 @@ describe("position balance (rung 3)", () => {
   });
 });
 
-describe("keepers — each goal filled whenever the squad allows", () => {
+describe("keepers: each goal filled whenever the squad allows", () => {
   const outfield = (
     id: string,
     primary: Player["primary"],
@@ -133,7 +133,7 @@ describe("keepers — each goal filled whenever the squad allows", () => {
     }
   });
 
-  it("a lone deputy still keeps — one goal filled, the other team rotates", () => {
+  it("a lone deputy still keeps, one goal filled and the other team rotates", () => {
     const players = [
       outfield("OnlyKeeper", "Defence", "GK", 3),
       ...DEPUTIES.slice(2, 8),
@@ -184,7 +184,7 @@ describe("keepers — each goal filled whenever the squad allows", () => {
 });
 
 describe("skill balance (rung 4)", () => {
-  it("v1.1 regression: every skill tier splits with gap ≤ 1 — two 5s means one per team", () => {
+  it("v1.1 regression: every skill tier splits with gap ≤ 1, so two 5s means one per team", () => {
     const result = buildTeams(DEMO_ROSTER, NO_CONSTRAINTS, 13);
     const s = statsOf(result, DEMO_ROSTER);
     for (const tier of [5, 4, 3, 2, 1]) {
@@ -227,8 +227,8 @@ describe("skill balance (rung 4)", () => {
   });
 });
 
-describe("odd headcount — pricing the extra man (caps hard, margins lean small)", () => {
-  it("tier caps hold REGARDLESS of headcount — the small team can never hoard quality", () => {
+describe("odd headcount: pricing the extra man (caps hard, margins lean small)", () => {
+  it("tier caps hold REGARDLESS of headcount, so the small team can never hoard quality", () => {
     // The reported bug: all 5s on one side, the other side all 4s and 3s.
     // Structural guardrail: every tier splits within ±1 even in odd games.
     for (const seed of [3, 7, 11]) {
@@ -246,7 +246,7 @@ describe("odd headcount — pricing the extra man (caps hard, margins lean small
 
   it("inside the caps, quality leans to the man-down team (better per head)", () => {
     // Tiers 4s:2, 3s:6, 2s:1 → the lone 2 is the odd extra; it belongs to
-    // the bigger team. Result: 13 v 15 — big side higher on paper, small
+    // the bigger team. Result: 13 v 15, big side higher on paper, small
     // side better per head (3.25 v 3.00).
     const players = pick([
       "Dev", "Rohan", "Harsh", "Ritvik", "Kabir", "Sameer", "Manav", "Nikhil", "Zaid",
@@ -261,7 +261,7 @@ describe("odd headcount — pricing the extra man (caps hard, margins lean small
     expect(result.checks.find((c) => c.id === "tiers")?.pass).toBe(true);
   });
 
-  it("paper totals may look wrong — reported honestly, never fixed by breaking tiers", () => {
+  it("paper totals may look wrong, reported honestly and never fixed by breaking tiers", () => {
     // Pool {5,4,4,3,3}: caps force the 5 onto the 3-player side is illegal
     // (would stack a pair), so the big side carries 12 v 7. The engine must
     // keep tier caps, pass the check with an honest note, and offer the
@@ -274,12 +274,12 @@ describe("odd headcount — pricing the extra man (caps hard, margins lean small
     }
     const odd = result.checks.find((c) => c.id === "odd-count");
     expect(odd?.pass).toBe(true);
-    expect(odd?.detail).toContain("unavoidable");
+    expect(odd?.detail).toContain("Unavoidable");
     expect(result.flags.join(" ")).toContain("rotates one player off");
   });
 
   it("legs are a currency: passengers hide on the bigger team", () => {
-    // Four equal 3s — two runners (5), two passengers (1) — plus a 2.
+    // Four equal 3s: two runners (5), two passengers (1), plus a 2.
     // The man-down side should get runners; the extra-body side absorbs
     // the slow legs.
     const mk = (id: string, running: 1 | 5, primary: "Defence" | "Midfield"): Player => ({

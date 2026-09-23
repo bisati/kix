@@ -2,7 +2,7 @@ import { Constraints, Player, Position } from "./types";
 
 /**
  * Match-day instructions: deterministic tweaks the engine follows for one
- * game only. They never touch the engine itself — they compile into inputs
+ * game only. They never touch the engine itself. They compile into inputs
  * it already understands: constraint pairs and transformed player attributes.
  */
 

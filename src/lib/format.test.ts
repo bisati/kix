@@ -16,23 +16,23 @@ describe("WhatsApp share text", () => {
 
   it("lists name first, position after", () => {
     for (const row of [...result.teams.A.rows, ...result.teams.B.rows]) {
-      expect(text).toContain(`${row.player.name} — ${row.position}`);
+      expect(text).toContain(`${row.player.name} · ${row.position}`);
     }
   });
 
   it("never marks primary/secondary placements", () => {
     expect(text).not.toContain("secondary");
     expect(text).not.toContain("primary:");
-    // Player lines ("Name — Position") must carry no asterisk; the only
+    // Player lines ("Name · Position") must carry no asterisk; the only
     // legal asterisks are WhatsApp bold markers on *Team A* / *Team B*.
     for (const line of text.split("\n")) {
-      if (line.includes(" — ")) expect(line, line).not.toContain("*");
+      if (line.includes(" · ")) expect(line, line).not.toContain("*");
     }
   });
 
   it("keeps every player exactly once", () => {
     for (const p of DEMO_ROSTER) {
-      const occurrences = text.split(`${p.name} — `).length - 1;
+      const occurrences = text.split(`${p.name} · `).length - 1;
       expect(occurrences, p.name).toBe(1);
     }
   });

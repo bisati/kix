@@ -4,7 +4,7 @@
  *
  * Both are drawn with the same trick: a rounded stroke painted in the fill
  * color, which fattens the arms and softens every join. That's the solid look
- * the ★ and ⚡ text glyphs can't give — and unlike glyphs, these render
+ * the ★ and ⚡ text glyphs can't give, and unlike glyphs these render
  * identically on every platform.
  */
 

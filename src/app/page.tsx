@@ -68,7 +68,7 @@ export default function Home() {
         localStorage.getItem(ROSTER_KEY) ?? localStorage.getItem(LEGACY_KEYS.roster);
       if (stored) {
         const parsed: Player[] = JSON.parse(stored);
-        // An empty array is a real saved state ("delete all"), not a miss —
+        // An empty array is a real saved state ("delete all"), not a miss.
         // only fall back to the demo squad when nothing valid is stored.
         if (Array.isArray(parsed)) {
           setRoster(parsed);
@@ -90,7 +90,7 @@ export default function Home() {
       if (!isDemo) localStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
       localStorage.setItem(SELECTED_KEY, JSON.stringify([...selectedIds]));
     } catch {
-      // Storage unavailable — the app still works for this session.
+      // Storage unavailable. The app still works for this session.
     }
   }, [roster, isDemo, selectedIds, hydrated]);
 
@@ -211,7 +211,7 @@ export default function Home() {
 
         {isDemo && hydrated && (
           <p className="animate-rise w-fit rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-            Demo squad loaded — import yours in{" "}
+            Demo squad loaded. Import yours in{" "}
             <button
               onClick={() => setTab("roster")}
               className="underline underline-offset-2"

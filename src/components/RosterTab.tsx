@@ -347,7 +347,7 @@ export default function RosterTab({ roster, isDemo, onChange }: Props) {
       <ConfirmDialog
         open={confirming === "deleteAll"}
         title={`Delete all ${roster.length} players?`}
-        body="Your whole roster is removed from this browser. This can't be undone — export a CSV first if you want a backup."
+        body="Your whole roster is removed from this browser. This can't be undone. Export a CSV first if you want a backup."
         confirmLabel="Delete all"
         onConfirm={() => {
           onChange([], false);
@@ -359,7 +359,7 @@ export default function RosterTab({ roster, isDemo, onChange }: Props) {
       <ConfirmDialog
         open={confirming === "reset"}
         title="Reset to the demo squad?"
-        body={`Your ${roster.length} players are replaced by the ${DEMO_ROSTER.length} demo players. This can't be undone — export a CSV first if you want to keep them.`}
+        body={`Your ${roster.length} players are replaced by the ${DEMO_ROSTER.length} demo players. This can't be undone. Export a CSV first if you want to keep them.`}
         confirmLabel="Reset to demo"
         onConfirm={() => {
           onChange(DEMO_ROSTER, true);

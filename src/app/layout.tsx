@@ -9,9 +9,9 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Kix — fair football teams in 30 seconds",
+  title: "Kix: fair football teams in 30 seconds",
   description:
-    "Pick who showed up, get two evenly matched teams with the fairness proof on screen. Position balance, skill-tier spread, and playmaker splits — verified, not vibes.",
+    "Pick who showed up, get two evenly matched teams with the fairness proof on screen. Position balance, skill-tier spread, and playmaker splits. Verified, not vibes.",
 };
 
 export const viewport: Viewport = {

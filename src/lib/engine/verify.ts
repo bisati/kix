@@ -51,7 +51,7 @@ export function buildTeamViews(
 
 /**
  * The verify step from the original agent prompt, as data the UI renders.
- * Every check is recomputed from the final assignments — the generator is
+ * Every check is recomputed from the final assignments. The generator is
  * never trusted to grade itself.
  */
 export function buildChecks(
@@ -102,7 +102,7 @@ export function buildChecks(
   });
 
   // 2b. Keepers. "Possible" means two players who can keep at all, by primary
-  // or secondary — the same bar the shape rung uses, so the check never asks
+  // or secondary, the same bar the shape rung uses, so the check never asks
   // for a keeper the squad cannot produce.
   const canKeep = players.filter(
     (p) => p.primary === "GK" || p.secondary === "GK"
@@ -125,17 +125,17 @@ export function buildChecks(
     pass: goalsFilled >= goalsWanted,
     detail:
       goalsWanted === 0
-        ? "nobody here keeps — both teams rotate in goal"
+        ? "nobody here keeps, so both teams rotate in goal"
         : goalsFilled < goalsWanted
         ? `${goalsFilled} of ${goalsWanted} goals filled, though ${canKeep.length} here can keep`
         : goalsWanted === 1
-        ? `${lone} keeps for Team ${namesA ? "A" : "B"} — Team ${
+        ? `${lone} keeps for Team ${namesA ? "A" : "B"}. Team ${
             namesA ? "B" : "A"
           } rotates in goal`
         : `${namesA} (A) · ${namesB} (B)`,
   });
 
-  // 3. Skill totals within 2 — or at this pool's tier-forced minimum.
+  // 3. Skill totals within 2, or at this pool's tier-forced minimum.
   const feas = poolFeasibility(players);
   const gap = Math.abs(s.A.skillTotal - s.B.skillTotal);
   const atFloor = gap === feas.minGap;
@@ -146,13 +146,13 @@ export function buildChecks(
     detail:
       `${s.A.skillTotal} v ${s.B.skillTotal} (gap ${gap}` +
       (gap > 2 && atFloor
-        ? " — minimum possible for these tiers)"
+        ? ", the minimum possible for these tiers)"
         : gap > 2
         ? `; minimum possible is ${feas.minGap})`
         : ")"),
   });
 
-  // 4. Tier spread ≤ 1 per tier — hard for EVERY headcount. The structural
+  // 4. Tier spread ≤ 1 per tier, hard for EVERY headcount. The structural
   // guardrail: the man-down team can never hoard quality wholesale.
   const tierDetail = [5, 4, 3, 2, 1]
     .filter((t) => s.A.tierCount[t] + s.B.tierCount[t] > 0)
@@ -176,7 +176,7 @@ export function buildChecks(
     detail: `${s.A.secondaryCount} v ${s.B.secondaryCount} secondary placements`,
   });
 
-  // 6. Controllers split ≤ 1 — hard for every headcount.
+  // 6. Controllers split ≤ 1, hard for every headcount.
   checks.push({
     id: "controllers",
     label: "Game-controllers split evenly (gap ≤ 1)",
@@ -193,13 +193,13 @@ export function buildChecks(
   });
 
   // 7. Odd headcount: with equal averages the bigger team simply wins, so
-  // the smaller team must carry at least as much total skill — the missing
+  // the smaller team must carry at least as much total skill. The missing
   // body is paid for in quality.
   if (s.A.count !== s.B.count) {
     const larger = s.A.count > s.B.count ? "A" : "B";
     const largerStats = larger === "A" ? s.A : s.B;
     const smallerStats = larger === "A" ? s.B : s.A;
-    // The bigger team may hold the higher TOTAL (tier caps force it — that
+    // The bigger team may hold the higher TOTAL (tier caps force it, and that
     // paper number is correct, not a bug); what must lean man-down is
     // quality PER HEAD.
     const smallLeads =
@@ -212,9 +212,9 @@ export function buildChecks(
       label: "Man-down team is better per head",
       pass: smallLeads || unavoidable,
       detail:
-        `${smallerStats.count} players at ${avg(smallerStats)} avg vs ${largerStats.count} at ${avg(largerStats)} (totals ${smallerStats.skillTotal} v ${largerStats.skillTotal}${largerStats.skillTotal > smallerStats.skillTotal ? " — bigger side higher on paper is the tier caps working" : ""})` +
+        `${smallerStats.count} players at ${avg(smallerStats)} avg vs ${largerStats.count} at ${avg(largerStats)} (totals ${smallerStats.skillTotal} v ${largerStats.skillTotal}${largerStats.skillTotal > smallerStats.skillTotal ? ", bigger side higher on paper is the tier caps working" : ""})` +
         (unavoidable
-          ? " — unavoidable: no tier-legal split leans quality man-down here"
+          ? ". Unavoidable: no tier-legal split leans quality man-down here"
           : ""),
     });
 
@@ -264,18 +264,18 @@ export function buildFlags(
       teamAssignments.length > 0 &&
       !teamAssignments.some((a) => a.position === "GK")
     ) {
-      flags.push(`Team ${team} has no keeper — rotates in goal.`);
+      flags.push(`Team ${team} has no keeper, so it rotates in goal.`);
     }
   }
   const secondaries = assignments.filter((a) => a.isSecondary);
   for (const a of secondaries) {
     const p = byId.get(a.playerId)!;
     flags.push(
-      `${p.name} plays ${a.position} (primary: ${p.primary}) — Team ${a.team}`
+      `${p.name} plays ${a.position} (primary: ${p.primary}) on Team ${a.team}`
     );
   }
   if (players.length % 2 === 1) {
-    flags.push(`Odd headcount (${players.length}) — teams differ by one player.`);
+    flags.push(`Odd headcount (${players.length}): teams differ by one player.`);
     // Escape valve: when the tier-forced gap gets ugly, offer the rotation
     // option that turns an odd game into an even one with rolling fresh legs.
     const s = computeStats(assignments, byId);
@@ -283,7 +283,7 @@ export function buildFlags(
     const small = s.A.count > s.B.count ? s.B : s.A;
     if (big.skillTotal - small.skillTotal >= 3) {
       flags.push(
-        "Forced gap is large today — option: the bigger team rotates one player off every ten minutes for an even game with fresh legs."
+        "Forced gap is large today. One option: the bigger team rotates one player off every ten minutes for an even game with fresh legs."
       );
     }
   }
