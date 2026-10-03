@@ -20,8 +20,8 @@ Before writing any code, every sentence in the prompt was put into one of five b
 |---|---|---|
 | **Make it impossible** | "Every player appears exactly one time; never invent, drop or alter a player." | The data model, not a rule |
 | **Hard constraint** | The user's explicit instructions for this game | Rung 1, must be zero |
-| **Ordered preference** | Positions, keepers, tier spread, controllers, midfield control, totals | Rungs 2 to 20 |
-| **Tiebreak** | Running totals, low-runner counts, age 40+ | Rungs 21 to 24 |
+| **Ordered preference** | Positions, keepers, tier spread, controllers, midfield control, totals, low-runner spread | Rungs 2 to 21 |
+| **Tiebreak** | Running totals, low-runner counts, age 40+ | Rungs 22 to 25 |
 | **Not the engine's job** | Parsing messy input, asking clarifying questions, the output layout | The CSV parser and the UI |
 
 The first bucket is the one people skip, and it's the most valuable. The prompt spent its entire top rung on integrity, *never drop a player, never duplicate one, never alter a name*, because a language model genuinely can do all three. In code, assignments are produced by mapping over the player list, so a dropped or cloned player isn't a rule that might be broken. It's a state that cannot be constructed. An entire rung of the prompt evaporated into a type.
@@ -136,8 +136,9 @@ Every version comment at the bottom of the prompt records a real Sunday complain
 | v1.4 | Shape beats fewer placements. Reported after a team took the pitch with no centre-back, and controllers stacked 5-3. | The shape rung, plus the controller split test |
 | v1.5 | Midfield control can't be one-sided. Reported after one midfield was two out-of-position 3s against a 5 and a 4. | The mid-control check |
 | v1.6 | Game Control became an explicit flag. The owner names who controls a game; rating no longer implies it. | "flagged game-controllers split with gap of 1 or less" |
+| v1.7 | Low-runner spread became a verified gate, not a tiebreak. Reported after a split with running totals one point apart put all five slow players on one team, with the fastest player on the other. | The `lowRunnerSpread` rung, the pace check, and the match-day regression test |
 
-Thirty-six tests now cover the ladder. Six of them exist only because somebody was annoyed on a Sunday, and they are the ones most worth keeping. A fairness rule nobody has complained about is a rule you don't yet know you need.
+Thirty-eight tests now cover the ladder. Seven of them exist only because somebody was annoyed on a Sunday, and they are the ones most worth keeping. A fairness rule nobody has complained about is a rule you don't yet know you need.
 
 ## Postscript: a rule can go stale without anyone editing it
 

@@ -192,6 +192,22 @@ export function buildChecks(
     detail: `mid controllers ${s.A.midControllers}v${s.B.midControllers} · mid skill ${s.A.midSkill}v${s.B.midSkill}`,
   });
 
+  // 6b. Pace: slow legs spread, never stacked. Running totals can sit a
+  // point apart while every low-runner lands on one side, so this check
+  // counts bodies. Odd games allow one extra on the bigger team.
+  const lowGap = Math.abs(s.A.lowRunners - s.B.lowRunners);
+  const lowTolerance = s.A.count === s.B.count ? 1 : 2;
+  checks.push({
+    id: "pace",
+    label: `Slow legs spread across teams (gap ≤ ${lowTolerance})`,
+    pass: lowGap <= lowTolerance,
+    detail:
+      `low-runners (run ≤ 2): ${s.A.lowRunners} v ${s.B.lowRunners} · running ${s.A.runningTotal} v ${s.B.runningTotal}` +
+      (lowGap > lowTolerance
+        ? " · stacked: no like-for-like swap could even this out without breaking a higher rung"
+        : ""),
+  });
+
   // 7. Odd headcount: with equal averages the bigger team simply wins, so
   // the smaller team must carry at least as much total skill. The missing
   // body is paid for in quality.

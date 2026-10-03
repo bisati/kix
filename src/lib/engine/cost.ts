@@ -143,7 +143,8 @@ export function poolFeasibility(players: Player[]): PoolFeasibility {
  * Lexicographic cost vector, lower is better. Order mirrors the priority
  * ladder: constraints > position balance & shape > secondary spread >
  * tier spread (5s..1s) > controllers > midfield control > totals >
- * odd-count placement > mobility tiebreaks > fewest secondaries.
+ * low-runner spread > odd-count leans > mobility tiebreaks >
+ * fewest secondaries.
  */
 export function costVector(
   assignments: Assignment[],
@@ -218,6 +219,18 @@ export function costVector(
   const totalGap = Math.abs(s.A.skillTotal - s.B.skillTotal);
   const totalExcess = Math.max(0, totalGap - 2);
 
+  // Mobility gate: slow legs (running <= 2) are spread, never stacked.
+  // Near-equal running TOTALS can hide a 0v5 pile of low-runners, so the
+  // gate counts bodies, not running points. An even game tolerates a gap
+  // of 1; an odd game 2, because each extra body can absorb one extra
+  // passenger. Direction (the bigger team carries them) comes from
+  // passengerLean below.
+  const lowRunnerGap = Math.abs(s.A.lowRunners - s.B.lowRunners);
+  const lowRunnerSpread = Math.max(
+    0,
+    lowRunnerGap - (s.A.count === s.B.count ? 1 : 2)
+  );
+
   // Odd headcount, "pricing the extra man". Tier caps stay hard (the terms
   // above); compensation happens only in the margins inside them:
   //   oddTierLean:  each tier's odd extra should sit with the BIGGER team
@@ -249,7 +262,6 @@ export function costVector(
   }
 
   const runningGap = Math.abs(s.A.runningTotal - s.B.runningTotal);
-  const lowRunnerGap = Math.abs(s.A.lowRunners - s.B.lowRunners);
   const over40Gap = Math.abs(s.A.over40 - s.B.over40);
   const totalSecondaries = s.A.secondaryCount + s.B.secondaryCount;
 
@@ -267,6 +279,7 @@ export function costVector(
     totalExcess,
     oddTierLean, // inside the caps: quality extras lean to the man-down team
     totalGap,
+    lowRunnerSpread, // pace is spread, never stacked beyond tolerance
     passengerLean,
     runHeadLean,
     gkStructural,

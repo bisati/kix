@@ -310,6 +310,75 @@ describe("odd headcount: pricing the extra man (caps hard, margins lean small)",
   });
 });
 
+describe("mobility (rung 5): slow legs are spread, never stacked", () => {
+  const mk = (
+    name: string,
+    primary: Player["primary"],
+    secondary: Player["secondary"],
+    skill: Player["skill"],
+    running: Player["running"],
+    control = false,
+    ageBand = "26-30"
+  ): Player => ({ id: name, name, primary, secondary, skill, running, control, ageBand });
+
+  // The reported match day: 17 players whose running TOTALS split almost
+  // evenly (26 v 25) while every slow player landed on one team (0 v 5),
+  // with the fastest player on the all-runner side. Shape mirrors the real
+  // pool; the names do not.
+  const MATCHDAY: Player[] = [
+    mk("Udai", "GK", "Full-back", 2, 3),
+    mk("Pranav", "Full-back", "Winger", 3, 3, false, "46-50"),
+    mk("Harman", "Full-back", "Winger", 2, 3, false, "50-55"),
+    mk("Sandesh", "Midfield", "Midfield", 4, 3, true, "46-50"),
+    mk("Ehan", "Winger", "Winger", 5, 5, false, "15-20"),
+    mk("Samar", "Midfield", "Winger", 3, 3),
+    mk("Jivan", "Winger", "Winger", 3, 3, false, "16-20"),
+    mk("Nakul", "Striker", "Striker", 4, 3, false, "46-50"),
+    mk("Keshav", "Full-back", "GK", 2, 2, false, "30-35"),
+    mk("Girik", "Defence", "Full-back", 4, 4, true, "36-40"),
+    mk("Viraj", "Full-back", "Full-back", 3, 2, false, "46-50"),
+    mk("Chetan", "Full-back", "Full-back", 2, 3, false, "15-20"),
+    mk("Jatin", "Midfield", "Midfield", 3, 2, false, "46-50"),
+    mk("Yuvan", "Winger", "Winger", 4, 4, true),
+    mk("Sagar", "Winger", "Winger", 3, 5),
+    mk("Tanish", "Winger", "Winger", 3, 2, false, "46-50"),
+    mk("Daman", "Striker", "Striker", 2, 1, false, "56-60"),
+  ];
+
+  it("v1.7 regression: odd game keeps the low-runner gap within 2, leaning big-side", () => {
+    for (const seed of [1, 5, 9, 23]) {
+      const result = buildTeams(MATCHDAY, NO_CONSTRAINTS, seed);
+      const s = statsOf(result, MATCHDAY);
+      expect(
+        Math.abs(s.A.lowRunners - s.B.lowRunners),
+        `seed ${seed}`
+      ).toBeLessThanOrEqual(2);
+      const [big, small] =
+        s.A.count > s.B.count ? [s.A, s.B] : [s.B, s.A];
+      expect(big.lowRunners, `seed ${seed}`).toBeGreaterThanOrEqual(
+        small.lowRunners
+      );
+      expect(result.checks.find((c) => c.id === "pace")?.pass, `seed ${seed}`).toBe(true);
+      // Pace is never bought with quality: tiers and totals still hold.
+      expect(result.checks.find((c) => c.id === "tiers")?.pass, `seed ${seed}`).toBe(true);
+      expect(result.checks.find((c) => c.id === "totals")?.pass, `seed ${seed}`).toBe(true);
+    }
+  });
+
+  it("even game keeps the low-runner gap within 1", () => {
+    const players = MATCHDAY.filter((p) => p.name !== "Daman");
+    for (const seed of [1, 7, 19]) {
+      const result = buildTeams(players, NO_CONSTRAINTS, seed);
+      const s = statsOf(result, players);
+      expect(
+        Math.abs(s.A.lowRunners - s.B.lowRunners),
+        `seed ${seed}`
+      ).toBeLessThanOrEqual(1);
+      expect(result.checks.find((c) => c.id === "pace")?.pass, `seed ${seed}`).toBe(true);
+    }
+  });
+});
+
 describe("re-roll", () => {
   it("produces a different team composition than the previous split", () => {
     const first = buildTeams(DEMO_ROSTER, NO_CONSTRAINTS, 1);

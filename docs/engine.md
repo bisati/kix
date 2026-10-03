@@ -78,18 +78,19 @@ The bands are reading aids. The engine sees one flat ordered list, and the rung 
 | 15 | `totalExcess` | Skill totals more than two apart. |
 | 16 | `oddTierLean` | Odd games only. When a tier has an odd count, its spare body sitting with the *bigger* team costs that tier's value, so quality leans toward the short-handed side. |
 | 17 | `totalGap` | The raw skill difference, tuning inside the tolerance above. |
-| 18 | `passengerLean` | Odd games only. Every slow player (running 2 or less) left on the man-down team. |
-| 19 | `runHeadLean` | Odd games only. The bigger team out-running the short side on a per-player basis. |
-| 20 | `gkStructural` | Odd games only. A lone specialist keeper stuck on the bigger team, which can better afford to rotate. |
+| 18 | `lowRunnerSpread` | Slow players (running 2 or less) stacked beyond tolerance: a gap of one in an even game, two in an odd one, since each extra body can absorb one extra passenger. Running totals a point apart can hide a 0v5 pile of statues, so this rung counts bodies, not running points. |
+| 19 | `passengerLean` | Odd games only. Every slow player (running 2 or less) left on the man-down team. |
+| 20 | `runHeadLean` | Odd games only. The bigger team out-running the short side on a per-player basis. |
+| 21 | `gkStructural` | Odd games only. A lone specialist keeper stuck on the bigger team, which can better afford to rotate. |
 
 ### Tiebreaks (only when everything above ties)
 
 | Rung | Term | What it counts |
 |---|---|---|
-| 21 | `runningGap` | Difference in total running. |
-| 22 | `lowRunnerGap` | Difference in the count of slow players. |
-| 23 | `over40Gap` | Difference in players aged 40 or over, the only use of the age band. |
-| 24 | `totalSecondaries` | Total players out of their primary position. All else equal, more people play where they belong. |
+| 22 | `runningGap` | Difference in total running. |
+| 23 | `lowRunnerGap` | Difference in the count of slow players. |
+| 24 | `over40Gap` | Difference in players aged 40 or over, the only use of the age band. |
+| 25 | `totalSecondaries` | Total players out of their primary position. All else equal, more people play where they belong. |
 
 ## 4. Finding a split
 
@@ -152,6 +153,7 @@ The checks:
 - Every skill tier split evenly, the anti-hoarding guarantee
 - Out-of-position burden shared
 - Game-controllers split evenly, and separately, midfield control balanced
+- Slow legs spread across teams, never stacked, even when running totals look close
 - Man-down team is better per head (odd games), with an honest note when it is unachievable
 - Bigger team carries the slower legs (odd games)
 - Your pinned constraints honored
