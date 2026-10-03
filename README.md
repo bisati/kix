@@ -46,6 +46,10 @@ npm run dev    # app
 npm test       # engine test suite
 ```
 
+## Deploying
+
+Vercel builds from this repo. A push to `main` is a production deploy; a push to any other branch gets its own preview URL. Work on a branch, check the preview, then merge into `main`.
+
 ## Roster CSV format
 
 ```
