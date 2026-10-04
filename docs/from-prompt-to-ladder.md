@@ -20,8 +20,8 @@ Before writing any code, every sentence in the prompt was put into one of five b
 |---|---|---|
 | **Make it impossible** | "Every player appears exactly one time; never invent, drop or alter a player." | The data model, not a rule |
 | **Hard constraint** | The user's explicit instructions for this game | Rung 1, must be zero |
-| **Ordered preference** | Positions, keepers, tier spread, controllers, midfield control, totals, low-runner spread | Rungs 2 to 21 |
-| **Tiebreak** | Running totals, low-runner counts, age 40+ | Rungs 22 to 25 |
+| **Ordered preference** | Positions, keepers, tier spread, controllers, midfield control, totals, matchups, low-runner spread, running and age spread | Rungs 2 to 24 |
+| **Tiebreak** | Raw matchup gap, running totals, low-runner counts, age 40+ | Rungs 25 to 29 |
 | **Not the engine's job** | Parsing messy input, asking clarifying questions, the output layout | The CSV parser and the UI |
 
 The first bucket is the one people skip, and it's the most valuable. The prompt spent its entire top rung on integrity, *never drop a player, never duplicate one, never alter a name*, because a language model genuinely can do all three. In code, assignments are produced by mapping over the player list, so a dropped or cloned player isn't a rule that might be broken. It's a state that cannot be constructed. An entire rung of the prompt evaporated into a type.
@@ -45,7 +45,7 @@ Two rungs, placed *above* overall skill totals. The prompt never said where this
 **3. Out-of-position burden.**
 > "Playing out of position is a hidden cost. Never stack all out-of-position players on one team. Do NOT contort the split to minimize secondary placements: a sound football shape beats fewer placements."
 
-Two terms at opposite ends of the ladder. Sharing the burden is near the top; preferring fewer placements overall is the very last rung, where it can only break ties. The prompt's "do NOT contort" is exactly that distance. *(Rung 6 and rung 24.)*
+Two terms at opposite ends of the ladder. Sharing the burden is near the top; preferring fewer placements overall is the very last rung, where it can only break ties. The prompt's "do NOT contort" is exactly that distance. *(Rung 6 and rung 29.)*
 
 **4. Game controllers.**
 > "The flag is authoritative, never infer control from rating. A 5 without the flag is a weapon, not a controller. If the flag is missing from the data entirely, fall back to: outfield 4-5s excluding goalkeepers and pure-pace wingers."
@@ -137,6 +137,7 @@ Every version comment at the bottom of the prompt records a real Sunday complain
 | v1.5 | Midfield control can't be one-sided. Reported after one midfield was two out-of-position 3s against a 5 and a 4. | The mid-control check |
 | v1.6 | Game Control became an explicit flag. The owner names who controls a game; rating no longer implies it. | "flagged game-controllers split with gap of 1 or less" |
 | v1.7 | Low-runner spread became a verified gate, not a tiebreak. Reported after a split with running totals one point apart put all five slow players on one team, with the fastest player on the other. | The `lowRunnerSpread` rung, the pace check, and the match-day regression test |
+| v1.8 | Matchups joined the ladder, and running and age became targets rather than tiebreaks. Reported after a split balanced on tiers, totals and slow legs aimed the only 5 at a back line with no centre-back, while the lone centre-back sat on the star's own team: attack-versus-defence edges of +7 against 0. | The `matchupExcess`, `runningExcess` and `over40Spread` rungs, the matchups and legs-age checks, and a second match-day regression test |
 
 Thirty-eight tests now cover the ladder. Seven of them exist only because somebody was annoyed on a Sunday, and they are the ones most worth keeping. A fairness rule nobody has complained about is a rule you don't yet know you need.
 
@@ -169,7 +170,7 @@ Nothing here is specific to football. The same sequence applies to any prompt it
 
 ## What it cost
 
-Asked for a control-first team against a pace-and-attack team, the prompt would have attempted it and explained its reasoning. Handed a constraint nobody anticipated, someone's brother-in-law visiting, two players who fell out last week, it would have improvised something sensible. The engine optimises the twenty-four rungs it was given and is blind to everything else.
+Asked for a control-first team against a pace-and-attack team, the prompt would have attempted it and explained its reasoning. Handed a constraint nobody anticipated, someone's brother-in-law visiting, two players who fell out last week, it would have improvised something sensible. The engine optimises the twenty-nine rungs it was given and is blind to everything else.
 
 What it gets in exchange is that the same squad always produces the same teams, instantly, offline, with every decision traceable to a rule anyone can read, and that a contradiction sitting quietly in the rules for six versions gets found instead of averaged over. For a weekly game among the same fifty people, that trade is worth making. The place to keep a model is where improvisation actually helps: reading a messy WhatsApp list of who's coming, not deciding who plays with whom.
 

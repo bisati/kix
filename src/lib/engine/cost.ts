@@ -19,6 +19,8 @@ export interface TeamStats {
   controllers: number;
   midControllers: number;
   midSkill: number;
+  attackSkill: number; // Winger + Striker, by assigned position
+  defenceSkill: number; // GK + Defence + Full-back, by assigned position
   secondaryCount: number;
 }
 
@@ -43,6 +45,8 @@ function emptyStats(): TeamStats {
     controllers: 0,
     midControllers: 0,
     midSkill: 0,
+    attackSkill: 0,
+    defenceSkill: 0,
     secondaryCount: 0,
   };
 }
@@ -68,9 +72,26 @@ export function computeStats(
       t.midSkill += p.skill;
       if (p.control) t.midControllers++;
     }
+    if (a.position === "Winger" || a.position === "Striker")
+      t.attackSkill += p.skill;
+    if (a.position === "GK" || a.position === "Defence" || a.position === "Full-back")
+      t.defenceSkill += p.skill;
     if (a.isSecondary) t.secondaryCount++;
   }
   return stats;
+}
+
+/**
+ * Matchups. Each team's attack plays into the other team's defence, so what
+ * decides the game is the two edges (my attack minus your defence), not the
+ * two attacks. Totals and tiers can match while one side aims its best
+ * player at a back line with no centre-back and the other attacks into a
+ * full one. Returns the gap between the two edges.
+ */
+export function matchupGap(s: SplitStats): number {
+  const edgeA = s.A.attackSkill - s.B.defenceSkill;
+  const edgeB = s.B.attackSkill - s.A.defenceSkill;
+  return Math.abs(edgeA - edgeB);
 }
 
 /** How many players in the pool could legally play `pos` (primary or secondary). */
@@ -143,8 +164,8 @@ export function poolFeasibility(players: Player[]): PoolFeasibility {
  * Lexicographic cost vector, lower is better. Order mirrors the priority
  * ladder: constraints > position balance & shape > secondary spread >
  * tier spread (5s..1s) > controllers > midfield control > totals >
- * low-runner spread > odd-count leans > mobility tiebreaks >
- * fewest secondaries.
+ * matchups > low-runner spread > running and age spread > odd-count
+ * leans > fine tiebreaks > fewest secondaries.
  */
 export function costVector(
   assignments: Assignment[],
@@ -263,6 +284,19 @@ export function costVector(
 
   const runningGap = Math.abs(s.A.runningTotal - s.B.runningTotal);
   const over40Gap = Math.abs(s.A.over40 - s.B.over40);
+
+  // Competitive, not just equal on paper. Edges within 2 are free; beyond
+  // that the split is lopsided at one end of the pitch.
+  const matchup = matchupGap(s);
+  const matchupExcess = Math.max(0, matchup - 2);
+
+  // Legs and age are targets, not only tiebreaks: running totals within 3
+  // and 40-plus players within 1 (even games). Odd games already price
+  // legs per head through passengerLean/runHeadLean, so the running target
+  // applies to even games only; age allows 2 there, like slow legs.
+  const even = s.A.count === s.B.count;
+  const runningExcess = even ? Math.max(0, runningGap - 3) : 0;
+  const over40Spread = Math.max(0, over40Gap - (even ? 1 : 2));
   const totalSecondaries = s.A.secondaryCount + s.B.secondaryCount;
 
   return [
@@ -278,11 +312,15 @@ export function costVector(
     midSkillExcess,
     totalExcess,
     oddTierLean, // inside the caps: quality extras lean to the man-down team
+    matchupExcess, // attack v opposing defence: edges within 2
     totalGap,
     lowRunnerSpread, // pace is spread, never stacked beyond tolerance
+    runningExcess, // running totals within 3 (even games)
+    over40Spread, // 40-plus players within 1 (2 in odd games)
     passengerLean,
     runHeadLean,
     gkStructural,
+    matchup,
     runningGap,
     lowRunnerGap,
     over40Gap,

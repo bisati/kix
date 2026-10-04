@@ -379,6 +379,82 @@ describe("mobility (rung 5): slow legs are spread, never stacked", () => {
   });
 });
 
+describe("matchups and spread (v1.8): competitive, not just equal on paper", () => {
+  const mk = (
+    name: string,
+    primary: Player["primary"],
+    secondary: Player["secondary"],
+    skill: Player["skill"],
+    running: Player["running"],
+    control = false,
+    ageBand = "26-30"
+  ): Player => ({ id: name, name, primary, secondary, skill, running, control, ageBand });
+
+  // The reported match day: tiers, totals, controllers and slow legs all
+  // balanced, yet the only 5 (a winger) was aimed at a back line with no
+  // centre-back, while the lone CB sat behind the thin midfield on the same
+  // team. Attack-vs-defence edges came out +7 v 0. Shape mirrors the real
+  // pool; the names do not.
+  const MATCHDAY: Player[] = [
+    mk("Udai", "GK", "Full-back", 3, 2),
+    mk("Keshav", "Full-back", "GK", 2, 2, false, "30-35"),
+    mk("Girik", "Defence", "Full-back", 4, 4, true, "36-40"),
+    mk("Pranav", "Full-back", "Winger", 3, 3, false, "46-50"),
+    mk("Viraj", "Full-back", "Full-back", 3, 2, false, "46-50"),
+    mk("Harman", "Full-back", "Winger", 2, 3, false, "50-55"),
+    mk("Chetan", "Full-back", "Full-back", 2, 3, false, "15-20"),
+    mk("Sandesh", "Midfield", "Midfield", 4, 3, true, "46-50"),
+    mk("Omkar", "Midfield", "Midfield", 4, 3, true, "46-50"),
+    mk("Lalit", "Midfield", "Midfield", 4, 3, true, "46-50"),
+    mk("Ehan", "Winger", "Winger", 5, 5, false, "15-20"),
+    mk("Jivan", "Winger", "Winger", 3, 4, false, "15-20"),
+    mk("Sagar", "Winger", "Winger", 3, 5),
+    mk("Rohin", "Winger", "Striker", 2, 3, false, "16-20"),
+    mk("Nakul", "Striker", "Striker", 4, 3, false, "46-50"),
+    mk("Arnav", "Striker", "Winger", 4, 2, false, "40-45"),
+  ];
+
+  const edges = (result: ReturnType<typeof buildTeams>) => {
+    const s = statsOf(result, MATCHDAY);
+    return {
+      a: s.A.attackSkill - s.B.defenceSkill,
+      b: s.B.attackSkill - s.A.defenceSkill,
+      s,
+    };
+  };
+
+  it("each attack meets a defence of matching strength (edge gap ≤ 2)", () => {
+    for (const seed of [1, 5, 9, 23]) {
+      const result = buildTeams(MATCHDAY, NO_CONSTRAINTS, seed);
+      const { a, b } = edges(result);
+      expect(Math.abs(a - b), `seed ${seed}: edges ${a} v ${b}`).toBeLessThanOrEqual(2);
+      expect(result.checks.find((c) => c.id === "matchups")?.pass, `seed ${seed}`).toBe(true);
+      // Matchups are never bought with a higher rung.
+      for (const id of ["tiers", "totals", "controllers", "pace"]) {
+        expect(result.checks.find((c) => c.id === id)?.pass, `seed ${seed} ${id}`).toBe(true);
+      }
+    }
+  });
+
+  it("the lone centre-back lines up against the side with the star", () => {
+    for (const seed of [1, 5, 9, 23]) {
+      const result = buildTeams(MATCHDAY, NO_CONSTRAINTS, seed);
+      const teamOf = new Map(result.assignments.map((x) => [x.playerId, x.team]));
+      expect(teamOf.get("Girik"), `seed ${seed}`).not.toBe(teamOf.get("Ehan"));
+    }
+  });
+
+  it("running totals stay within 3 and 40-plus players within 1 in an even game", () => {
+    for (const seed of [1, 5, 9, 23]) {
+      const result = buildTeams(MATCHDAY, NO_CONSTRAINTS, seed);
+      const { s } = edges(result);
+      expect(Math.abs(s.A.runningTotal - s.B.runningTotal), `seed ${seed}`).toBeLessThanOrEqual(3);
+      expect(Math.abs(s.A.over40 - s.B.over40), `seed ${seed}`).toBeLessThanOrEqual(1);
+      expect(result.checks.find((c) => c.id === "legs-age")?.pass, `seed ${seed}`).toBe(true);
+    }
+  });
+});
+
 describe("re-roll", () => {
   it("produces a different team composition than the previous split", () => {
     const first = buildTeams(DEMO_ROSTER, NO_CONSTRAINTS, 1);
