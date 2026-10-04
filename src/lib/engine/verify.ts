@@ -7,7 +7,7 @@ import {
   POSITIONS,
   TeamView,
 } from "../types";
-import { computeStats, poolFeasibility } from "./cost";
+import { computeStats, matchupGap, poolFeasibility } from "./cost";
 
 const POSITION_ORDER: Record<Position, number> = {
   GK: 0,
@@ -206,6 +206,53 @@ export function buildChecks(
       (lowGap > lowTolerance
         ? " · stacked: no like-for-like swap could even this out without breaking a higher rung"
         : ""),
+  });
+
+  // 6c. Like-for-like units: defence vs defence, attack vs attack
+  // (midfield has its own check above). Cross edges can look moderate
+  // while one team does all the attacking; mirrored units are what make
+  // the game two-sided.
+  const defGap = Math.abs(s.A.defenceSkill - s.B.defenceSkill);
+  const atkGap = Math.abs(s.A.attackSkill - s.B.attackSkill);
+  checks.push({
+    id: "units",
+    label: "Defence matches defence, attack matches attack (within 2)",
+    pass: defGap <= 2 && atkGap <= 2,
+    detail:
+      `defence ${s.A.defenceSkill} v ${s.B.defenceSkill} · attack ${s.A.attackSkill} v ${s.B.attackSkill}` +
+      (defGap > 2 || atkGap > 2
+        ? " · closest found without breaking a higher rung"
+        : ""),
+  });
+
+  // 6d. Matchups: each attack against the defence it plays into. Equal
+  // totals can still aim the best player at the weakest back line.
+  const edgeA = s.A.attackSkill - s.B.defenceSkill;
+  const edgeB = s.B.attackSkill - s.A.defenceSkill;
+  const mGap = matchupGap(s);
+  checks.push({
+    id: "matchups",
+    label: "Each attack meets a defence of matching strength (edges within 2)",
+    pass: mGap <= 2,
+    detail:
+      `A attack ${s.A.attackSkill} v B defence ${s.B.defenceSkill} (edge ${edgeA >= 0 ? "+" : ""}${edgeA}) · ` +
+      `B attack ${s.B.attackSkill} v A defence ${s.A.defenceSkill} (edge ${edgeB >= 0 ? "+" : ""}${edgeB})` +
+      (mGap > 2 ? " · closest found without breaking a higher rung" : ""),
+  });
+
+  // 6e. Legs and age as targets: running totals within 3 (even games; odd
+  // games are judged per head by the legs check), 40-plus within 1 (2 odd).
+  const evenGame = s.A.count === s.B.count;
+  const runGap = Math.abs(s.A.runningTotal - s.B.runningTotal);
+  const ageGap = Math.abs(s.A.over40 - s.B.over40);
+  const ageTol = evenGame ? 1 : 2;
+  checks.push({
+    id: "legs-age",
+    label: evenGame
+      ? "Running within 3 and 40-plus players within 1"
+      : `40-plus players within ${ageTol}`,
+    pass: (!evenGame || runGap <= 3) && ageGap <= ageTol,
+    detail: `running ${s.A.runningTotal} v ${s.B.runningTotal} · 40-plus ${s.A.over40} v ${s.B.over40}`,
   });
 
   // 7. Odd headcount: with equal averages the bigger team simply wins, so

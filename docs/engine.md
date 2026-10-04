@@ -16,7 +16,7 @@ The original version of this was a prompt. A language model read the roster and 
 
 The obvious way to score a split is to add up penalties. A bit for an uneven skill total, a bit for a lopsided midfield, a bit for stacking the good players. That approach quietly lets the engine sell you out: a large fairness violation becomes acceptable as long as it is offset by several small wins elsewhere, and nobody can see the exchange rate.
 
-Kix scores a split as an **ordered list of 24 numbers** instead, each one counting how badly a single rule is broken. Splits are compared position by position. The first position where they differ decides the winner outright, and nothing after that position is ever read.
+Kix scores a split as an **ordered list of 31 numbers** instead, each one counting how badly a single rule is broken. Splits are compared position by position. The first position where they differ decides the winner outright, and nothing after that position is ever read.
 
 ```js
 // lower is better; first difference decides, full stop
@@ -77,20 +77,31 @@ The bands are reading aids. The engine sees one flat ordered list, and the rung 
 |---|---|---|
 | 15 | `totalExcess` | Skill totals more than two apart. |
 | 16 | `oddTierLean` | Odd games only. When a tier has an odd count, its spare body sitting with the *bigger* team costs that tier's value, so quality leans toward the short-handed side. |
-| 17 | `totalGap` | The raw skill difference, tuning inside the tolerance above. |
-| 18 | `lowRunnerSpread` | Slow players (running 2 or less) stacked beyond tolerance: a gap of one in an even game, two in an odd one, since each extra body can absorb one extra passenger. Running totals a point apart can hide a 0v5 pile of statues, so this rung counts bodies, not running points. |
-| 19 | `passengerLean` | Odd games only. Every slow player (running 2 or less) left on the man-down team. |
-| 20 | `runHeadLean` | Odd games only. The bigger team out-running the short side on a per-player basis. |
-| 21 | `gkStructural` | Odd games only. A lone specialist keeper stuck on the bigger team, which can better afford to rotate. |
+
+### Competitive, not just equal on paper
+
+| Rung | Term | What it counts |
+|---|---|---|
+| 17 | `defUnitExcess` | Like for like: defence (keeper, defenders, full-backs) against the other defence, more than two apart. |
+| 18 | `atkUnitExcess` | Like for like: attack (wingers and strikers) against the other attack, more than two apart. Mirrored units are what make a game two-sided; cross edges alone can look moderate while one team does all the attacking into a wall. A unit gap within 2 is the allowed trade, a little less defence bought back as a little more attack. |
+| 19 | `matchupExcess` | Each team's attack plays into the other team's defence. The two edges, my attack minus your defence, more than two apart. Totals and tiers can match while one side aims its best player at a back line with no centre-back. |
+| 20 | `totalGap` | The raw skill difference, tuning inside the tolerance above. |
+| 21 | `lowRunnerSpread` | Slow players (running 2 or less) stacked beyond tolerance: a gap of one in an even game, two in an odd one, since each extra body can absorb one extra passenger. Running totals a point apart can hide a 0v5 pile of statues, so this rung counts bodies, not running points. |
+| 22 | `runningExcess` | Even games only. Running totals more than three apart. Odd games judge legs per head instead, on rungs 24 and 25. |
+| 23 | `over40Spread` | Players aged 40 or over, more than one apart (two in an odd game). |
+| 24 | `passengerLean` | Odd games only. Every slow player (running 2 or less) left on the man-down team. |
+| 25 | `runHeadLean` | Odd games only. The bigger team out-running the short side on a per-player basis. |
+| 26 | `gkStructural` | Odd games only. A lone specialist keeper stuck on the bigger team, which can better afford to rotate. |
 
 ### Tiebreaks (only when everything above ties)
 
 | Rung | Term | What it counts |
 |---|---|---|
-| 22 | `runningGap` | Difference in total running. |
-| 23 | `lowRunnerGap` | Difference in the count of slow players. |
-| 24 | `over40Gap` | Difference in players aged 40 or over, the only use of the age band. |
-| 25 | `totalSecondaries` | Total players out of their primary position. All else equal, more people play where they belong. |
+| 27 | `matchup` | The raw gap between the two edges, tuning inside the tolerance on rung 19. |
+| 28 | `runningGap` | Difference in total running. |
+| 29 | `lowRunnerGap` | Difference in the count of slow players. |
+| 30 | `over40Gap` | Difference in players aged 40 or over. |
+| 31 | `totalSecondaries` | Total players out of their primary position. All else equal, more people play where they belong. |
 
 ## 4. Finding a split
 
@@ -153,7 +164,10 @@ The checks:
 - Every skill tier split evenly, the anti-hoarding guarantee
 - Out-of-position burden shared
 - Game-controllers split evenly, and separately, midfield control balanced
+- Defence matches defence and attack matches attack, within 2
 - Slow legs spread across teams, never stacked, even when running totals look close
+- Each attack meets a defence of matching strength (the two edges within two)
+- Running totals within three (even games) and players aged 40 or over within one
 - Man-down team is better per head (odd games), with an honest note when it is unachievable
 - Bigger team carries the slower legs (odd games)
 - Your pinned constraints honored
@@ -182,7 +196,7 @@ All randomness comes from one small seeded generator. A given seed produces the 
 
 The prompt this replaced could improvise. Asked to build a control-first team against a pace-and-attack team, or handed a constraint nobody anticipated, a model would attempt it and explain itself. The engine cannot. It optimises the ladder it was given, and nothing else.
 
-- **It can't invent a new criterion mid-game.** Anything outside the 24 rungs is invisible to it. New ideas mean new code, not a new sentence.
+- **It can't invent a new criterion mid-game.** Anything outside the 29 rungs is invisible to it. New ideas mean new code, not a new sentence.
 - **It can't justify a choice in words.** The checks panel shows what holds and what doesn't, but no engine output ever explains *why* a particular pairing felt right.
 - **Optimality is only guaranteed for small squads.** Thirteen players or fewer are solved exhaustively. Above that, multi-restart hill climbing finds a very good split, not a provably perfect one.
 - **It is only as good as the ratings.** Skill and running are human judgements, entered once and rarely revised. Nothing in the system notices that someone has got fitter since March.
@@ -193,7 +207,7 @@ The trade was made knowingly. For a weekly game among the same fifty-odd people,
 
 | File | What's in it |
 |---|---|
-| [`src/lib/engine/cost.ts`](../src/lib/engine/cost.ts) | The ladder itself: team statistics, the 24-term vector, the lexicographic comparison, and the squad feasibility calculation. |
+| [`src/lib/engine/cost.ts`](../src/lib/engine/cost.ts) | The ladder itself: team statistics, the 29-term vector, the lexicographic comparison, and the squad feasibility calculation. |
 | [`src/lib/engine/index.ts`](../src/lib/engine/index.ts) | The search: seeded generator, snake draft, hill climbing, restarts, small-squad enumeration, re-roll and manual swap. |
 | [`src/lib/engine/verify.ts`](../src/lib/engine/verify.ts) | The independent grader: team views, every check, every flag. |
 | [`src/lib/instructions.ts`](../src/lib/instructions.ts) | Compiles pairs, injuries and one-day overrides into engine inputs. |
