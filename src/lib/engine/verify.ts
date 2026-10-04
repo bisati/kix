@@ -208,7 +208,24 @@ export function buildChecks(
         : ""),
   });
 
-  // 6c. Matchups: each attack against the defence it plays into. Equal
+  // 6c. Like-for-like units: defence vs defence, attack vs attack
+  // (midfield has its own check above). Cross edges can look moderate
+  // while one team does all the attacking; mirrored units are what make
+  // the game two-sided.
+  const defGap = Math.abs(s.A.defenceSkill - s.B.defenceSkill);
+  const atkGap = Math.abs(s.A.attackSkill - s.B.attackSkill);
+  checks.push({
+    id: "units",
+    label: "Defence matches defence, attack matches attack (within 2)",
+    pass: defGap <= 2 && atkGap <= 2,
+    detail:
+      `defence ${s.A.defenceSkill} v ${s.B.defenceSkill} · attack ${s.A.attackSkill} v ${s.B.attackSkill}` +
+      (defGap > 2 || atkGap > 2
+        ? " · closest found without breaking a higher rung"
+        : ""),
+  });
+
+  // 6d. Matchups: each attack against the defence it plays into. Equal
   // totals can still aim the best player at the weakest back line.
   const edgeA = s.A.attackSkill - s.B.defenceSkill;
   const edgeB = s.B.attackSkill - s.A.defenceSkill;
@@ -223,7 +240,7 @@ export function buildChecks(
       (mGap > 2 ? " · closest found without breaking a higher rung" : ""),
   });
 
-  // 6d. Legs and age as targets: running totals within 3 (even games; odd
+  // 6e. Legs and age as targets: running totals within 3 (even games; odd
   // games are judged per head by the legs check), 40-plus within 1 (2 odd).
   const evenGame = s.A.count === s.B.count;
   const runGap = Math.abs(s.A.runningTotal - s.B.runningTotal);

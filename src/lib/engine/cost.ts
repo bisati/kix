@@ -164,8 +164,8 @@ export function poolFeasibility(players: Player[]): PoolFeasibility {
  * Lexicographic cost vector, lower is better. Order mirrors the priority
  * ladder: constraints > position balance & shape > secondary spread >
  * tier spread (5s..1s) > controllers > midfield control > totals >
- * matchups > low-runner spread > running and age spread > odd-count
- * leans > fine tiebreaks > fewest secondaries.
+ * like-for-like units > matchups > low-runner spread > running and age
+ * spread > odd-count leans > fine tiebreaks > fewest secondaries.
  */
 export function costVector(
   assignments: Assignment[],
@@ -285,8 +285,24 @@ export function costVector(
   const runningGap = Math.abs(s.A.runningTotal - s.B.runningTotal);
   const over40Gap = Math.abs(s.A.over40 - s.B.over40);
 
-  // Competitive, not just equal on paper. Edges within 2 are free; beyond
-  // that the split is lopsided at one end of the pitch.
+  // Like-for-like units first: Defence vs Defence, Attack vs Attack
+  // (Midfield vs Midfield already holds a higher rung). A unit gap within
+  // 2 is a fair trade, a little less defence bought back as a little more
+  // attack. Beyond that the teams stop mirroring each other and the game
+  // turns into attack vs defence, however even the cross edges look:
+  // a strong attack aimed at a strong defence produces moderate edges
+  // while one team does all the attacking.
+  const defUnitExcess = Math.max(
+    0,
+    Math.abs(s.A.defenceSkill - s.B.defenceSkill) - 2
+  );
+  const atkUnitExcess = Math.max(
+    0,
+    Math.abs(s.A.attackSkill - s.B.attackSkill) - 2
+  );
+
+  // Then the cross edges. Edges within 2 are free; beyond that the split
+  // is lopsided at one end of the pitch.
   const matchup = matchupGap(s);
   const matchupExcess = Math.max(0, matchup - 2);
 
@@ -312,7 +328,9 @@ export function costVector(
     midSkillExcess,
     totalExcess,
     oddTierLean, // inside the caps: quality extras lean to the man-down team
-    matchupExcess, // attack v opposing defence: edges within 2
+    defUnitExcess, // like-for-like: defence vs defence within 2
+    atkUnitExcess, // like-for-like: attack vs attack within 2
+    matchupExcess, // then the cross edges: attack v opposing defence within 2
     totalGap,
     lowRunnerSpread, // pace is spread, never stacked beyond tolerance
     runningExcess, // running totals within 3 (even games)

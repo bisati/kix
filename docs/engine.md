@@ -16,7 +16,7 @@ The original version of this was a prompt. A language model read the roster and 
 
 The obvious way to score a split is to add up penalties. A bit for an uneven skill total, a bit for a lopsided midfield, a bit for stacking the good players. That approach quietly lets the engine sell you out: a large fairness violation becomes acceptable as long as it is offset by several small wins elsewhere, and nobody can see the exchange rate.
 
-Kix scores a split as an **ordered list of 24 numbers** instead, each one counting how badly a single rule is broken. Splits are compared position by position. The first position where they differ decides the winner outright, and nothing after that position is ever read.
+Kix scores a split as an **ordered list of 31 numbers** instead, each one counting how badly a single rule is broken. Splits are compared position by position. The first position where they differ decides the winner outright, and nothing after that position is ever read.
 
 ```js
 // lower is better; first difference decides, full stop
@@ -82,24 +82,26 @@ The bands are reading aids. The engine sees one flat ordered list, and the rung 
 
 | Rung | Term | What it counts |
 |---|---|---|
-| 17 | `matchupExcess` | Each team's attack (wingers and strikers) plays into the other team's defence (keeper, defenders, full-backs). The two edges, my attack minus your defence, more than two apart. Totals and tiers can match while one side aims its best player at a back line with no centre-back. Because the two edges add up to everything outside midfield, this rung also means a team that owns the midfield gives some of it back at the two ends. |
-| 18 | `totalGap` | The raw skill difference, tuning inside the tolerance above. |
-| 19 | `lowRunnerSpread` | Slow players (running 2 or less) stacked beyond tolerance: a gap of one in an even game, two in an odd one, since each extra body can absorb one extra passenger. Running totals a point apart can hide a 0v5 pile of statues, so this rung counts bodies, not running points. |
-| 20 | `runningExcess` | Even games only. Running totals more than three apart. Odd games judge legs per head instead, on rungs 22 and 23. |
-| 21 | `over40Spread` | Players aged 40 or over, more than one apart (two in an odd game). |
-| 22 | `passengerLean` | Odd games only. Every slow player (running 2 or less) left on the man-down team. |
-| 23 | `runHeadLean` | Odd games only. The bigger team out-running the short side on a per-player basis. |
-| 24 | `gkStructural` | Odd games only. A lone specialist keeper stuck on the bigger team, which can better afford to rotate. |
+| 17 | `defUnitExcess` | Like for like: defence (keeper, defenders, full-backs) against the other defence, more than two apart. |
+| 18 | `atkUnitExcess` | Like for like: attack (wingers and strikers) against the other attack, more than two apart. Mirrored units are what make a game two-sided; cross edges alone can look moderate while one team does all the attacking into a wall. A unit gap within 2 is the allowed trade, a little less defence bought back as a little more attack. |
+| 19 | `matchupExcess` | Each team's attack plays into the other team's defence. The two edges, my attack minus your defence, more than two apart. Totals and tiers can match while one side aims its best player at a back line with no centre-back. |
+| 20 | `totalGap` | The raw skill difference, tuning inside the tolerance above. |
+| 21 | `lowRunnerSpread` | Slow players (running 2 or less) stacked beyond tolerance: a gap of one in an even game, two in an odd one, since each extra body can absorb one extra passenger. Running totals a point apart can hide a 0v5 pile of statues, so this rung counts bodies, not running points. |
+| 22 | `runningExcess` | Even games only. Running totals more than three apart. Odd games judge legs per head instead, on rungs 24 and 25. |
+| 23 | `over40Spread` | Players aged 40 or over, more than one apart (two in an odd game). |
+| 24 | `passengerLean` | Odd games only. Every slow player (running 2 or less) left on the man-down team. |
+| 25 | `runHeadLean` | Odd games only. The bigger team out-running the short side on a per-player basis. |
+| 26 | `gkStructural` | Odd games only. A lone specialist keeper stuck on the bigger team, which can better afford to rotate. |
 
 ### Tiebreaks (only when everything above ties)
 
 | Rung | Term | What it counts |
 |---|---|---|
-| 25 | `matchup` | The raw gap between the two edges, tuning inside the tolerance on rung 17. |
-| 26 | `runningGap` | Difference in total running. |
-| 27 | `lowRunnerGap` | Difference in the count of slow players. |
-| 28 | `over40Gap` | Difference in players aged 40 or over. |
-| 29 | `totalSecondaries` | Total players out of their primary position. All else equal, more people play where they belong. |
+| 27 | `matchup` | The raw gap between the two edges, tuning inside the tolerance on rung 19. |
+| 28 | `runningGap` | Difference in total running. |
+| 29 | `lowRunnerGap` | Difference in the count of slow players. |
+| 30 | `over40Gap` | Difference in players aged 40 or over. |
+| 31 | `totalSecondaries` | Total players out of their primary position. All else equal, more people play where they belong. |
 
 ## 4. Finding a split
 
@@ -162,6 +164,7 @@ The checks:
 - Every skill tier split evenly, the anti-hoarding guarantee
 - Out-of-position burden shared
 - Game-controllers split evenly, and separately, midfield control balanced
+- Defence matches defence and attack matches attack, within 2
 - Slow legs spread across teams, never stacked, even when running totals look close
 - Each attack meets a defence of matching strength (the two edges within two)
 - Running totals within three (even games) and players aged 40 or over within one

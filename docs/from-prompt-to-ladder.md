@@ -20,8 +20,8 @@ Before writing any code, every sentence in the prompt was put into one of five b
 |---|---|---|
 | **Make it impossible** | "Every player appears exactly one time; never invent, drop or alter a player." | The data model, not a rule |
 | **Hard constraint** | The user's explicit instructions for this game | Rung 1, must be zero |
-| **Ordered preference** | Positions, keepers, tier spread, controllers, midfield control, totals, matchups, low-runner spread, running and age spread | Rungs 2 to 24 |
-| **Tiebreak** | Raw matchup gap, running totals, low-runner counts, age 40+ | Rungs 25 to 29 |
+| **Ordered preference** | Positions, keepers, tier spread, controllers, midfield control, totals, like-for-like units, matchups, low-runner spread, running and age spread | Rungs 2 to 26 |
+| **Tiebreak** | Raw matchup gap, running totals, low-runner counts, age 40+ | Rungs 27 to 31 |
 | **Not the engine's job** | Parsing messy input, asking clarifying questions, the output layout | The CSV parser and the UI |
 
 The first bucket is the one people skip, and it's the most valuable. The prompt spent its entire top rung on integrity, *never drop a player, never duplicate one, never alter a name*, because a language model genuinely can do all three. In code, assignments are produced by mapping over the player list, so a dropped or cloned player isn't a rule that might be broken. It's a state that cannot be constructed. An entire rung of the prompt evaporated into a type.
@@ -138,8 +138,9 @@ Every version comment at the bottom of the prompt records a real Sunday complain
 | v1.6 | Game Control became an explicit flag. The owner names who controls a game; rating no longer implies it. | "flagged game-controllers split with gap of 1 or less" |
 | v1.7 | Low-runner spread became a verified gate, not a tiebreak. Reported after a split with running totals one point apart put all five slow players on one team, with the fastest player on the other. | The `lowRunnerSpread` rung, the pace check, and the match-day regression test |
 | v1.8 | Matchups joined the ladder, and running and age became targets rather than tiebreaks. Reported after a split balanced on tiers, totals and slow legs aimed the only 5 at a back line with no centre-back, while the lone centre-back sat on the star's own team: attack-versus-defence edges of +7 against 0. | The `matchupExcess`, `runningExcess` and `over40Spread` rungs, the matchups and legs-age checks, and a second match-day regression test |
+| v1.9 | Like-for-like units outrank edges. Reported after a v1.8 split with even edges still gave one team the double midfield, the star and the stronger attack, so the whole game ran one way: attack against defence is not a fun game. Defence now mirrors defence and attack mirrors attack, within 2, before the cross edges are tuned. | The `defUnitExcess` and `atkUnitExcess` rungs, the units check, and the no-compounding regression test |
 
-Thirty-eight tests now cover the ladder. Seven of them exist only because somebody was annoyed on a Sunday, and they are the ones most worth keeping. A fairness rule nobody has complained about is a rule you don't yet know you need.
+Forty-two tests now cover the ladder. Eight of them exist only because somebody was annoyed on a Sunday, and they are the ones most worth keeping. A fairness rule nobody has complained about is a rule you don't yet know you need.
 
 ## Postscript: a rule can go stale without anyone editing it
 

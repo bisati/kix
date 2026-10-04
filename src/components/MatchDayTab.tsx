@@ -499,7 +499,9 @@ export default function MatchDayTab({
 
   const q = query.trim().toLowerCase();
   const selectedPlayers = roster.filter((p) => selectedIds.has(p.id));
-  // Search filters only the available list; the Selected group stays visible.
+  // Search shows only players still to add: the Selected group hides while a
+  // query is typed (the chips below the box still remove anyone) and returns
+  // when the box is cleared.
   const available = roster.filter(
     (p) => !selectedIds.has(p.id) && p.name.toLowerCase().includes(q)
   );
@@ -586,7 +588,7 @@ export default function MatchDayTab({
               </div>
 
               <div className="max-h-[46vh] overflow-y-auto overscroll-contain">
-                {selectedPlayers.length > 0 && (
+                {!q && selectedPlayers.length > 0 && (
                   <div>
                     <p className="sticky top-0 z-10 bg-pitch-soft/80 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-pitch-deep backdrop-blur-sm">
                       Selected · {selectedPlayers.length}
@@ -616,7 +618,14 @@ export default function MatchDayTab({
                   ))}
                   {available.length === 0 && (
                     <p className="px-3.5 py-4 text-center text-sm text-stone-400">
-                      {q ? `No one else matches “${query.trim()}”.` : "Everyone's in!"}
+                      {!q
+                        ? "Everyone's in!"
+                        : selectedPlayers.some((p) => p.name.toLowerCase().includes(q))
+                        ? `Already in the squad: ${selectedPlayers
+                            .filter((p) => p.name.toLowerCase().includes(q))
+                            .map((p) => p.name)
+                            .join(", ")}.`
+                        : `No one else matches “${query.trim()}”.`}
                     </p>
                   )}
                 </div>

@@ -15,7 +15,7 @@ The balancing engine implements a strict priority ladder:
 3. **Position balance.** Per-position counts differ by at most 1; out-of-position placements are legal only at a player's secondary position, flagged, and shared between teams. Keepers are settled before anything else: every available keeper goes in goal, up to one per team, counting deputies (GK as a secondary position). Two able keepers means both goals covered; one means that player keeps and the other team rotates; none means both rotate. Below that, each team fields a defender and a midfielder whenever the squad allows.
 4. **Skill balance.** Every skill tier (5s → 1s) splits evenly *before* totals are compared; game-controllers (playmakers) split evenly; midfields must be within 2 skill points of each other.
 5. **Odd headcounts: price the extra man.** The spare body is a real advantage, so the man-down team is paid in the margins *inside* the caps above: the odd tier's extra player leans their way (the caps mean quality can never be hoarded, six 4s still go 3v3 in an 8v7), they get the runners while slow legs hide on the bigger team, and a lone fixed keeper goes to the short side. Paper totals often favor the bigger team. That's the tier caps working, and the report says so instead of breaking them; when the forced gap gets ugly, the app suggests the escape valve (bigger team rotates one player off every ten minutes).
-6. **Competitive, not just equal on paper.** Each team's attack is weighed against the defence it plays into, and those two edges stay within 2, so the best player is never aimed at the weakest back line.
+6. **Competitive, not just equal on paper.** Like for like first: defence within 2 of defence, attack within 2 of attack, so the game never turns into one team attacking and the other defending. Then each attack is weighed against the defence it plays into, and those two edges stay within 2, so the best player is never aimed at the weakest back line.
 7. **Mobility and age.** Slow legs are spread, never stacked; running totals stay within 3 and players aged 40+ within 1.
 
 Under the hood: a goalkeeper-first snake draft seeds the split, then best-improvement hill climbing over player swaps repairs it against a lexicographic cost function that encodes the ladder. Twelve seeded restarts with increasing perturbation escape local optima. Everything is deterministic per seed. Re-roll is a new seed, not a shrug.
@@ -32,7 +32,7 @@ Under the hood: a goalkeeper-first snake draft seeds the split, then best-improv
 
 ## Deeper reading
 
-- [Inside the Kix engine](docs/engine.md): the 29-rung ladder in full, the search that climbs it, and the verifier that grades it.
+- [Inside the Kix engine](docs/engine.md): the 31-rung ladder in full, the search that climbs it, and the verifier that grades it.
 - [From prompt to ladder](docs/from-prompt-to-ladder.md): how the original agent prompt became code, including the rule inside it that turned out to be impossible.
 
 ## Stack

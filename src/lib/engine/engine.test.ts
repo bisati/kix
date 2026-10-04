@@ -436,6 +436,33 @@ describe("matchups and spread (v1.8): competitive, not just equal on paper", () 
     }
   });
 
+  it("v1.9 regression: attack matches attack, so the game is never attack vs defence", () => {
+    // The follow-up complaint: edges came out even (+2 v 0) yet one team
+    // held the double midfield AND the star AND the stronger attack, so
+    // one side did all the attacking. Like-for-like units now outrank
+    // edges: attack within 2 of attack, defence as close as the pool
+    // allows, and whoever concedes the midfield gets firepower back.
+    for (const seed of [1, 5, 9, 23]) {
+      const result = buildTeams(MATCHDAY, NO_CONSTRAINTS, seed);
+      const { s } = edges(result);
+      const atkGap = Math.abs(s.A.attackSkill - s.B.attackSkill);
+      expect(atkGap, `seed ${seed}: attack ${s.A.attackSkill} v ${s.B.attackSkill}`).toBeLessThanOrEqual(2);
+      // No compounding: the side ahead in midfield is never also ahead in
+      // attack beyond the tolerance.
+      const dMid = s.A.midSkill - s.B.midSkill;
+      const dAtk = s.A.attackSkill - s.B.attackSkill;
+      if (Math.abs(dMid) > 2) {
+        expect(
+          Math.sign(dMid) === Math.sign(dAtk) && Math.abs(dAtk) > 2,
+          `seed ${seed}: mid ${dMid > 0 ? "+" : ""}${dMid} and attack ${dAtk > 0 ? "+" : ""}${dAtk} compound`
+        ).toBe(false);
+      }
+      for (const id of ["tiers", "totals", "controllers", "pace"]) {
+        expect(result.checks.find((c) => c.id === id)?.pass, `seed ${seed} ${id}`).toBe(true);
+      }
+    }
+  });
+
   it("the lone centre-back lines up against the side with the star", () => {
     for (const seed of [1, 5, 9, 23]) {
       const result = buildTeams(MATCHDAY, NO_CONSTRAINTS, seed);
